@@ -69,6 +69,7 @@ async function initFirebaseData() {
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join')?.toUpperCase();
 
+    let joinedNewGroup = false;
     if (joinCode && joinCode.length === 6) {
         if (!savedGroupIds.includes(joinCode)) {
             const docRef = await db.collection('groups').doc(joinCode).get();
@@ -76,6 +77,7 @@ async function initFirebaseData() {
                 savedGroupIds.push(joinCode);
                 saveSavedGroupIds();
                 state.activeGroupId = joinCode;
+                joinedNewGroup = true;
                 // Clean the URL so a refresh doesn't trigger it again
                 window.history.replaceState({}, document.title, window.location.pathname);
             } else {
@@ -84,6 +86,7 @@ async function initFirebaseData() {
         } else {
             // Already in trip, just switch to it
             state.activeGroupId = joinCode;
+            joinedNewGroup = true;
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
@@ -96,8 +99,9 @@ async function initFirebaseData() {
     const promises = savedGroupIds.map(id => subscribeToGroup(id));
     await Promise.all(promises);
 
-    // Ensure active group is valid
-    if (!state.activeGroupId || !state.groups.find(g => g.id === state.activeGroupId)) {
+    // Ensure active group is valid ONLY if we didn't just explicitly join/select one. 
+    // Wait for the snapshot to actually populate `state.groups` before defaulting.
+    if (!joinedNewGroup && (!state.activeGroupId || !state.groups.find(g => g.id === state.activeGroupId))) {
         state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
     }
 }
