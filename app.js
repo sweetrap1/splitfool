@@ -65,6 +65,29 @@ async function initFirebaseData() {
         }
     }
 
+    // Process URL Invite Links (?join=CODE)
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinCode = urlParams.get('join')?.toUpperCase();
+
+    if (joinCode && joinCode.length === 6) {
+        if (!savedGroupIds.includes(joinCode)) {
+            const docRef = await db.collection('groups').doc(joinCode).get();
+            if (docRef.exists) {
+                savedGroupIds.push(joinCode);
+                saveSavedGroupIds();
+                state.activeGroupId = joinCode;
+                // Clean the URL so a refresh doesn't trigger it again
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                alert(`Invite link invalid: Trip '${joinCode}' was not found.`);
+            }
+        } else {
+            // Already in trip, just switch to it
+            state.activeGroupId = joinCode;
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
     // Default if no saved groups
     if (savedGroupIds.length === 0) {
         await createNewGroup("My Trip");
@@ -73,8 +96,9 @@ async function initFirebaseData() {
     const promises = savedGroupIds.map(id => subscribeToGroup(id));
     await Promise.all(promises);
 
-    if (!state.activeGroupId && state.groups.length > 0) {
-        state.activeGroupId = state.groups[0].id;
+    // Ensure active group is valid
+    if (!state.activeGroupId || !state.groups.find(g => g.id === state.activeGroupId)) {
+        state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
     }
 }
 
@@ -331,8 +355,28 @@ function initGroups() {
     if (shareGroupBtn && shareGroupModal) {
         shareGroupBtn.addEventListener('click', () => {
             const activeGroup = getActiveGroup();
+            const inviteUrl = window.location.origin + window.location.pathname + '?join=' + activeGroup.id;
+
             document.getElementById('share-group-code-display').innerText = activeGroup.id;
+            document.getElementById('share-group-link-display').value = inviteUrl;
+
+            const copyBtn = document.getElementById('copy-share-link-btn');
+            copyBtn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+            copyBtn.classList.remove('success');
+
             shareGroupModal.classList.add('active');
+        });
+
+        document.getElementById('copy-share-link-btn').addEventListener('click', function () {
+            const linkInput = document.getElementById('share-group-link-display');
+            navigator.clipboard.writeText(linkInput.value).then(() => {
+                this.innerHTML = '<i class="fa-solid fa-check"></i>';
+                this.classList.add('success');
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fa-solid fa-copy"></i>';
+                    this.classList.remove('success');
+                }, 2000);
+            });
         });
     }
 }
