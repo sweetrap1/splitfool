@@ -115,10 +115,38 @@
                     <label for="person-name">Name</label>
                     <input type="text" id="person-name" placeholder="Enter name">
                 </div>
+                <div class="form-group">
+                    <label for="person-venmo">Venmo Username (Optional)</label>
+                    <input type="text" id="person-venmo" placeholder="@username">
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn secondary close-modal-btn">Cancel</button>
                 <button class="btn primary" id="save-person-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Person Modal -->
+    <div id="edit-person-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Person</h3>
+                <button class="close-btn"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit-person-name">Name</label>
+                    <input type="text" id="edit-person-name" placeholder="Enter name">
+                </div>
+                <div class="form-group">
+                    <label for="edit-person-venmo">Venmo Username (Optional)</label>
+                    <input type="text" id="edit-person-venmo" placeholder="@username">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn primary" id="save-edit-person-btn">Save</button>
             </div>
         </div>
     </div>
