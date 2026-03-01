@@ -242,6 +242,7 @@ function initModals() {
     const personModal = document.getElementById('person-modal');
     document.getElementById('add-person-btn').addEventListener('click', () => {
         document.getElementById('person-name').value = '';
+        document.getElementById('person-venmo').value = '';
         personModal.classList.add('active');
     });
 
@@ -264,21 +265,57 @@ function initModals() {
         });
     });
 
-    // Save Person handler stub
+    // Save Person handler
     document.getElementById('save-person-btn').addEventListener('click', () => {
         const nameInput = document.getElementById('person-name');
+        const venmoInput = document.getElementById('person-venmo');
         if (nameInput.value.trim() !== '') {
-            addPerson(nameInput.value.trim());
+            addPerson(nameInput.value.trim(), venmoInput.value.trim());
             personModal.classList.remove('active');
         }
     });
+
+    const editPersonModal = document.getElementById('edit-person-modal');
+    if (document.getElementById('save-edit-person-btn')) {
+        document.getElementById('save-edit-person-btn').addEventListener('click', () => {
+            const id = editPersonModal.dataset.personId;
+            const name = document.getElementById('edit-person-name').value.trim();
+            let venmo = document.getElementById('edit-person-venmo').value.trim();
+
+            if (name !== '') {
+                const activeGroup = getActiveGroup();
+                const person = activeGroup.people.find(p => p.id === id);
+                if (person) {
+                    person.name = name;
+                    if (venmo && !venmo.startsWith('@')) venmo = '@' + venmo;
+                    person.venmoUsername = venmo;
+                    saveState();
+                    renderAll();
+                    editPersonModal.classList.remove('active');
+                }
+            }
+        });
+    }
 }
 
 // Data Operations
-function addPerson(name) {
+window.openEditPersonModal = function (id) {
+    const activeGroup = getActiveGroup();
+    const person = activeGroup.people.find(p => p.id === id);
+    if (!person) return;
+
+    document.getElementById('edit-person-name').value = person.name;
+    document.getElementById('edit-person-venmo').value = person.venmoUsername || '';
+    document.getElementById('edit-person-modal').dataset.personId = id;
+    document.getElementById('edit-person-modal').classList.add('active');
+};
+
+function addPerson(name, venmo) {
     const activeGroup = getActiveGroup();
     const id = 'p_' + Date.now();
-    activeGroup.people.push({ id, name });
+    let venmoUsername = venmo || '';
+    if (venmoUsername && !venmoUsername.startsWith('@')) venmoUsername = '@' + venmoUsername;
+    activeGroup.people.push({ id, name, venmoUsername });
     saveState();
     renderAll();
 }
@@ -309,15 +346,21 @@ function renderPeople() {
 
     activeGroup.people.forEach(p => {
         const char = p.name.charAt(0).toUpperCase();
+        const venmoBadge = p.venmoUsername ? `<span style="color:#008CFF; font-size: 0.8em; margin-left: 0.5rem;"><i class="fa-brands fa-venmo"></i> ${p.venmoUsername}</span>` : '';
         list.innerHTML += `
             <div class="card person-card">
                 <div class="person-info">
                     <div class="avatar">${char}</div>
-                    <h3>${p.name}</h3>
+                    <h3>${p.name} ${venmoBadge}</h3>
                 </div>
-                <button class="btn danger" onclick="removePerson('${p.id}')">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
+                <div style="display:flex; gap: 0.5rem;">
+                    <button class="btn icon-btn" onclick="openEditPersonModal('${p.id}')">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="btn danger" onclick="removePerson('${p.id}')">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
             </div>
         `;
     });
@@ -780,13 +823,24 @@ function renderSettleUp() {
         if (transactions.length === 0) return '';
         let html = '<ul class="settle-list">';
         transactions.forEach(tx => {
-            const fromName = activeGroup.people.find(p => p.id === tx.from)?.name || 'Unknown';
-            const toName = activeGroup.people.find(p => p.id === tx.to)?.name || 'Unknown';
+            const fromPerson = activeGroup.people.find(p => p.id === tx.from);
+            const toPerson = activeGroup.people.find(p => p.id === tx.to);
+            const fromName = fromPerson?.name || 'Unknown';
+            const toName = toPerson?.name || 'Unknown';
+
+            let venmoBtn = '';
+            if (toPerson && toPerson.venmoUsername) {
+                const cleanUsername = toPerson.venmoUsername.replace('@', '');
+                const venmoUrl = `https://venmo.com/?tx=pay&txn=pay&audience=private&recipients=${cleanUsername}&amount=${tx.amount.toFixed(2)}&note=SplitFool%20Settlement`;
+                venmoBtn = `<a href="${venmoUrl}" target="_blank" class="btn" style="background:#008CFF; color:white; padding:0.25rem 0.5rem; text-decoration:none; font-size:0.8rem; border-radius:4px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="fa-brands fa-venmo"></i> Pay</a>`;
+            }
+
             html += `
                 <li style="list-style:none;">
                     <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <strong>${fromName}</strong> pays <strong>${toName}</strong>
+                        <div style="display:flex; align-items:center;">
+                            <strong>${fromName}</strong>&nbsp;pays&nbsp;<strong>${toName}</strong>
+                            ${venmoBtn}
                         </div>
                         <div class="amount positive">${tx.amount.toFixed(2)} ${currency}</div>
                     </div>
