@@ -19,6 +19,13 @@ let state = {
 };
 let unsubscribeListeners = {};
 
+// User Identification for Admin permissions
+let myUserId = localStorage.getItem('splitfool_user_id');
+if (!myUserId) {
+    myUserId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    localStorage.setItem('splitfool_user_id', myUserId);
+}
+
 function getActiveGroup() {
     return state.groups.find(g => g.id === state.activeGroupId) || state.groups[0];
 }
@@ -121,7 +128,13 @@ function saveSavedGroupIds() {
 
 async function createNewGroup(name) {
     const roomCode = generateRoomCode();
-    const newGroup = { id: roomCode, name: name, people: [], expenses: [] };
+    const newGroup = {
+        id: roomCode,
+        name: name,
+        people: [],
+        expenses: [],
+        creatorId: myUserId
+    };
     await db.collection('groups').doc(roomCode).set(newGroup);
     savedGroupIds.push(roomCode);
     saveSavedGroupIds();
@@ -280,6 +293,13 @@ function initGroups() {
     if (editGroupBtn && editGroupModal) {
         editGroupBtn.addEventListener('click', () => {
             const activeGroup = getActiveGroup();
+
+            // Permission check
+            if (activeGroup.creatorId && activeGroup.creatorId !== myUserId) {
+                alert("Only the group creator can rename this trip.");
+                return;
+            }
+
             document.getElementById('edit-group-name').value = activeGroup.name;
             editGroupModal.classList.add('active');
         });
@@ -300,11 +320,18 @@ function initGroups() {
     const deleteGroupModal = document.getElementById('delete-confirm-modal');
     if (deleteGroupBtn && deleteGroupModal) {
         deleteGroupBtn.addEventListener('click', () => {
+            const activeGroup = getActiveGroup();
+
+            // Permission check
+            if (activeGroup.creatorId && activeGroup.creatorId !== myUserId) {
+                alert("Only the group creator can delete this trip.");
+                return;
+            }
+
             if (state.groups.length <= 1) {
                 alert("You cannot delete the only remaining group.");
                 return;
             }
-            const activeGroup = getActiveGroup();
             document.getElementById('delete-confirm-message').innerHTML = `Are you sure you want to delete the group <strong>"${activeGroup.name}"</strong>?`;
             deleteGroupModal.classList.add('active');
         });
@@ -404,6 +431,16 @@ function renderGroupSelector() {
     groupSelect.innerHTML = state.groups.map(g =>
         `<option value="${g.id}" ${g.id === state.activeGroupId ? 'selected' : ''}>${g.name}</option>`
     ).join('');
+
+    // Toggle Admin Buttons visibility
+    const activeGroup = getActiveGroup();
+    const isAdmin = !activeGroup.creatorId || activeGroup.creatorId === myUserId;
+
+    const editBtn = document.getElementById('edit-group-btn');
+    const deleteBtn = document.getElementById('delete-group-btn');
+
+    if (editBtn) editBtn.style.display = isAdmin ? 'flex' : 'none';
+    if (deleteBtn) deleteBtn.style.display = isAdmin ? 'flex' : 'none';
 }
 
 // Navigation Logic
