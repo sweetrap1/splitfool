@@ -35,7 +35,11 @@ body {
 .app-container {
     max-width: 1000px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 1.5rem 1rem;
+    /* Better mobile padding */
+    width: 100vw;
+    overflow-x: hidden;
+    /* Stop horizontal scrolling */
 }
 
 /* Header & Nav */
@@ -398,6 +402,40 @@ select option {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.participant.group-selector {
+    display: flex;
+    gap: 0.35rem;
+    /* Smaller gap for mobile */
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    /* Center buttons when wrapping */
+    width: 100%;
+}
+
+.group-dropdown {
+    padding: 0.5rem;
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: 'Outfit';
+    font-size: 1rem;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s;
+    min-width: 120px;
+    max-width: 100%;
+    flex: 1 1 100%;
+    /* Force dropdown to its own line on mobile */
+    margin-bottom: 0.25rem;
+}
+
+.icon-btn {
+    padding: 0.5rem 0.6rem !important;
+    /* Slightly thinner buttons */
+}
+
 .participant-card {
     display: flex;
     align-items: center;
@@ -494,37 +532,39 @@ select option {
 /* Responsive */
 @media (max-width: 768px) {
     .app-container {
-        padding: 0.75rem;
-        /* tighter margins on mobile */
+        padding: 0.5rem;
+        /* tight margins on phone */
+        width: 100vw;
+        overflow-x: hidden;
     }
 
     .header-top {
         flex-direction: column !important;
         /* Force stack */
-        gap: 1rem;
-        align-items: stretch !important;
+        gap: 0.75rem;
+        align-items: center !important;
         justify-content: center !important;
     }
 
     .group-selector {
         justify-content: center;
         width: 100%;
+        gap: 0.25rem;
+        /* Super tight gap for 5 buttons */
     }
 
     .group-dropdown {
         width: 100% !important;
-        /* full width dropdown on mobile */
         margin-bottom: 0.5rem !important;
     }
 
     header {
-        flex-direction: column;
-        gap: 1rem;
         position: sticky;
         top: 0;
         background: var(--bg-color);
         z-index: 50;
-        padding-top: 1rem;
+        padding-top: 0.5rem;
+        margin-bottom: 1rem;
     }
 
     nav {
