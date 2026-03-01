@@ -25,7 +25,19 @@ function getActiveGroup() {
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
-    await initFirebaseData();
+    try {
+        await initFirebaseData();
+    } catch (error) {
+        console.error("Firebase Initialization Error:", error);
+        alert("Firebase Connection Error: The database was not found or permissions are blocked. Please make sure you created the 'Firestore Database' in your Firebase console and set it to 'Test Mode'.");
+
+        // Fallback so the UI doesn't crash completely
+        if (state.groups.length === 0) {
+            state.groups = [{ id: 'offline_error', name: 'Offline Error Trip', people: [], expenses: [] }];
+            state.activeGroupId = 'offline_error';
+        }
+    }
+
     initGroups();
     initNavigation();
     initModals();
