@@ -551,7 +551,8 @@ select option {
 @media (max-width: 768px) {
     .app-container {
         padding: 0.5rem;
-        /* tight margins on phone */
+        padding-bottom: 5rem;
+        /* Give space for fixed bottom nav bar */
         width: 100vw;
         overflow-x: hidden;
     }
@@ -595,18 +596,34 @@ select option {
     }
 
     nav {
-        width: 100%;
-        overflow-x: auto;
-        justify-content: flex-start;
-        padding: 0.5rem;
-        border-radius: 16px;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100vw;
+        border-radius: 0;
+        border: none;
+        border-top: 1px solid var(--border-color);
+        background: rgba(15, 23, 42, 0.95);
+        padding: 0.5rem 0.25rem;
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+        z-index: 100;
+        justify-content: space-around;
+        gap: 0;
     }
 
     .nav-btn {
-        flex: 1 0 auto;
-        white-space: nowrap;
-        justify-content: center;
-        padding: 0.75rem 1rem;
+        flex-direction: column;
+        flex: 1;
+        padding: 0.5rem 0.25rem;
+        font-size: 0.70rem;
+        gap: 0.25rem;
+        white-space: normal;
+        border-radius: 8px;
+    }
+
+    .nav-btn i {
+        font-size: 1.25rem;
     }
 
     .form-row {
