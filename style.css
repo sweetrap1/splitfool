@@ -532,6 +532,50 @@ select option {
     border: 1px solid var(--danger);
 }
 
+.expense-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.expense-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+}
+
+.expense-action-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+}
+
+.expense-action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+}
+
+.expense-action-btn.edit:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.expense-action-btn.delete:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+
 /* Utility Classes */
 .amount {
     font-family: monospace;

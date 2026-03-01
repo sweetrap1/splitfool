@@ -157,10 +157,11 @@
     <div id="expense-modal" class="modal">
         <div class="modal-content large">
             <div class="modal-header">
-                <h3>Add Expense</h3>
+                <h3 id="expense-modal-title">Add Expense</h3>
                 <button class="close-btn"><i class="fa-solid fa-times"></i></button>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="expense-id">
                 <div class="form-group">
                     <label for="expense-desc">Description</label>
                     <input type="text" id="expense-desc" placeholder="e.g. Dinner at Tacos El Gordo">

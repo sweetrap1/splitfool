@@ -185,11 +185,23 @@ const CURRENCY_NAMES = {
     "RUB": "Russian Ruble", "TRY": "Turkish Lira", "AED": "UAE Dirham",
     "COP": "Colombian Peso", "ARS": "Argentine Peso", "CLP": "Chilean Peso",
     "PEN": "Peruvian Sol", "PHP": "Philippine Peso", "IDR": "Indonesian Rupiah",
-    "MYR": "Malaysian Ringgit", "THB": "Thai Baht", "VND": "Vietnamese Dong"
+    "MYR": "Malaysian Ringgit", "THB": "Thai Baht", "VND": "Vietnamese Dong",
+    "HUF": "Hungarian Forint", "CZK": "Czech Koruna", "PLN": "Polish Zloty",
+    "ILS": "Israeli New Shekel", "TWD": "New Taiwan Dollar", "SAR": "Saudi Riyal",
+    "KWD": "Kuwaiti Dinar", "EGP": "Egyptian Pound", "VND": "Vietnamese Dong"
 };
 
 function getCurrencyLabel(code) {
-    return CURRENCY_NAMES[code] ? `${code} (${CURRENCY_NAMES[code]})` : code;
+    if (CURRENCY_NAMES[code]) return `${code} - ${CURRENCY_NAMES[code]}`;
+
+    // Fallback to browser Intl API if available
+    try {
+        const displayNames = new Intl.DisplayNames(['en'], { type: 'currency' });
+        const name = displayNames.of(code);
+        if (name && name !== code) return `${code} - ${name}`;
+    } catch (e) { }
+
+    return code;
 }
 
 // Global cached exchange rates so we don't spam the API
@@ -746,8 +758,11 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
         });
     }
 
+    const expenseIdInput = document.getElementById('expense-id');
+    const existingId = expenseIdInput.value;
+
     const expense = {
-        id: 'e_' + Date.now(),
+        id: existingId || 'e_' + Date.now(),
         description: desc,
         amount,
         currency,
@@ -757,12 +772,74 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
     };
 
     const activeGroup = getActiveGroup();
-    activeGroup.expenses.push(expense);
+
+    if (existingId) {
+        const index = activeGroup.expenses.findIndex(e => e.id === existingId);
+        if (index !== -1) {
+            activeGroup.expenses[index] = expense;
+        }
+    } else {
+        activeGroup.expenses.push(expense);
+    }
+
     saveState();
+    expenseIdInput.value = ''; // Reset
     document.getElementById('expense-modal').classList.remove('active');
 
     renderAll();
 });
+
+window.editExpense = function (id) {
+    const activeGroup = getActiveGroup();
+    const expense = activeGroup.expenses.find(e => e.id === id);
+    if (!expense) return;
+
+    // Open modal
+    document.getElementById('expense-modal').classList.add('active');
+    document.getElementById('expense-modal-title').textContent = 'Edit Expense';
+
+    // Fill fields
+    document.getElementById('expense-id').value = id;
+    document.getElementById('expense-desc').value = expense.description;
+    document.getElementById('expense-amount').value = expense.amount;
+    document.getElementById('expense-currency').value = expense.currency;
+    document.getElementById('expense-payer').value = expense.payerId;
+
+    // Set split mode
+    currentSplitMode = expense.splitType;
+    document.querySelectorAll('.split-tab').forEach(t => {
+        t.classList.toggle('active', t.getAttribute('data-split') === currentSplitMode);
+    });
+
+    renderSplitParticipants();
+
+    // Fill participant values
+    expense.participants.forEach(p => {
+        const cb = document.getElementById('part_' + p.personId);
+        const card = document.getElementById('card_' + p.personId);
+        const input = document.getElementById('input_' + p.personId);
+
+        if (cb) cb.checked = true;
+        if (card) card.classList.add('active');
+        if (input) input.value = p.share;
+    });
+
+    if (currentSplitMode === 'paid_for' && expense.participants.length > 0) {
+        document.getElementById('paid-for-select').value = expense.participants[0].personId;
+    }
+
+    updateSplitSummary();
+};
+
+window.deleteExpense = function (id) {
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+
+    const activeGroup = getActiveGroup();
+    activeGroup.expenses = activeGroup.expenses.filter(e => e.id !== id);
+
+    saveState();
+    renderAll();
+};
 
 function renderExpenses() {
     const activeGroup = getActiveGroup();
@@ -779,17 +856,32 @@ function renderExpenses() {
 
     sorted.forEach(e => {
         const payer = activeGroup.people.find(p => p.id === e.payerId)?.name || 'Unknown';
-        const symbol = e.currency === 'USD' ? '<i class="fa-solid fa-dollar-sign"></i>' : '<i class="fa-solid fa-peso-sign"></i>';
+        const symbol = e.currency === 'USD' ? '<i class="fa-solid fa-dollar-sign"></i>' : (e.currency === 'MXN' ? '<i class="fa-solid fa-peso-sign"></i>' : e.currency);
+
+        const participantNames = e.participants.map(part => {
+            const person = activeGroup.people.find(p => p.id === part.personId);
+            return person ? person.name : 'Unknown';
+        }).join(', ');
 
         list.innerHTML += `
-            <div class="card expense-card">
+            <div class="card expense-card" id="exp_${e.id}">
                 <div class="expense-header">
-                    <h3>${e.description}</h3>
+                    <div style="flex:1">
+                        <h3>${e.description}</h3>
+                    </div>
                     <div class="amount">${symbol} ${e.amount.toFixed(2)}</div>
+                    <div class="expense-actions">
+                        <button class="expense-action-btn edit" onclick="editExpense('${e.id}')" title="Edit Expense">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="expense-action-btn delete" onclick="deleteExpense('${e.id}')" title="Delete Expense">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="expense-details">
                     <span class="payer-badge">Paid by ${payer}</span>
-                    <span class="split-info">${e.participants.length} people (${e.splitType})</span>
+                    <span class="split-info">For: ${participantNames} (${e.splitType})</span>
                 </div>
             </div>
         `;
@@ -985,7 +1077,7 @@ function renderSettleUp() {
     }
 
     availableTargets.forEach(cur => {
-        optionsHtml += `<option value="${cur}">Combined in ${getCurrencyLabel(cur)}</option>`;
+        optionsHtml += `<option value="${cur}">${getCurrencyLabel(cur)}</option>`;
     });
 
     // Only rewrite innerHTML if it has actually changed to prevent resetting the dropdown constantly
@@ -1101,3 +1193,24 @@ function renderSettleUp() {
 
 // Call fetch on load
 fetchExchangeRate();
+
+function resetExpenseForm() {
+    document.getElementById('expense-id').value = '';
+    document.getElementById('expense-modal-title').textContent = 'Add Expense';
+    document.getElementById('expense-desc').value = '';
+    document.getElementById('expense-amount').value = '';
+    document.getElementById('expense-currency').value = 'USD';
+
+    const activeGroup = getActiveGroup();
+    if (activeGroup.people.length > 0) {
+        document.getElementById('expense-payer').value = activeGroup.people[0].id;
+    }
+
+    currentSplitMode = 'equal';
+    document.querySelectorAll('.split-tab').forEach(t => {
+        t.classList.toggle('active', t.getAttribute('data-split') === 'equal');
+    });
+
+    renderSplitParticipants();
+    updateSplitSummary();
+}
