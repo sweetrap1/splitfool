@@ -1,28 +1,123 @@
-// State Management
-let state = {
-    activeGroupId: 'g_default',
-    groups: [
-        {
-            id: 'g_default',
-            name: 'Default Trip',
-            people: [],
-            expenses: []
-        }
-    ]
+// Firebase Initialization
+const firebaseConfig = {
+    apiKey: "AIzaSyArL1xQgclF0tshvGoZPRmIlCSfzr0TAps",
+    authDomain: "splitfool-4ca6b.firebaseapp.com",
+    projectId: "splitfool-4ca6b",
+    storageBucket: "splitfool-4ca6b.firebasestorage.app",
+    messagingSenderId: "544504211257",
+    appId: "1:544504211257:web:94d93ff317d28d91ebeae8",
+    measurementId: "G-C7HF3N3X7N"
 };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// State Management
+let savedGroupIds = JSON.parse(localStorage.getItem('splitfool_saved_groups') || '[]');
+let state = {
+    activeGroupId: null,
+    groups: []
+};
+let unsubscribeListeners = {};
 
 function getActiveGroup() {
     return state.groups.find(g => g.id === state.activeGroupId) || state.groups[0];
 }
 
 // Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    loadState();
+document.addEventListener('DOMContentLoaded', async () => {
+    await initFirebaseData();
     initGroups();
     initNavigation();
     initModals();
     renderAll();
 });
+
+async function initFirebaseData() {
+    // Migrate old local data if it exists
+    const oldSaved = localStorage.getItem('splitfool_state');
+    if (oldSaved) {
+        try {
+            const parsed = JSON.parse(oldSaved);
+            if (parsed.groups && parsed.groups.length > 0) {
+                for (const oldGroup of parsed.groups) {
+                    const roomCode = generateRoomCode();
+                    const newGroup = { ...oldGroup, id: roomCode };
+                    await db.collection('groups').doc(roomCode).set(newGroup);
+                    savedGroupIds.push(roomCode);
+                }
+                localStorage.removeItem('splitfool_state');
+                saveSavedGroupIds();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // Default if no saved groups
+    if (savedGroupIds.length === 0) {
+        await createNewGroup("My Trip");
+    }
+
+    const promises = savedGroupIds.map(id => subscribeToGroup(id));
+    await Promise.all(promises);
+
+    if (!state.activeGroupId && state.groups.length > 0) {
+        state.activeGroupId = state.groups[0].id;
+    }
+}
+
+function generateRoomCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+function saveSavedGroupIds() {
+    localStorage.setItem('splitfool_saved_groups', JSON.stringify(savedGroupIds));
+}
+
+async function createNewGroup(name) {
+    const roomCode = generateRoomCode();
+    const newGroup = { id: roomCode, name: name, people: [], expenses: [] };
+    await db.collection('groups').doc(roomCode).set(newGroup);
+    savedGroupIds.push(roomCode);
+    saveSavedGroupIds();
+    state.activeGroupId = roomCode;
+    return subscribeToGroup(roomCode);
+}
+
+function subscribeToGroup(groupId) {
+    return new Promise((resolve) => {
+        if (unsubscribeListeners[groupId]) return resolve();
+
+        const unsubscribe = db.collection('groups').doc(groupId).onSnapshot(doc => {
+            if (doc.exists) {
+                const groupData = doc.data();
+                const existingIndex = state.groups.findIndex(g => g.id === groupId);
+                if (existingIndex >= 0) {
+                    state.groups[existingIndex] = groupData;
+                } else {
+                    state.groups.push(groupData);
+                }
+                renderAll();
+            } else {
+                // Document deleted
+                state.groups = state.groups.filter(g => g.id !== groupId);
+                if (state.activeGroupId === groupId) {
+                    state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
+                }
+                unsubscribe();
+                delete unsubscribeListeners[groupId];
+                renderAll();
+            }
+            resolve();
+        });
+        unsubscribeListeners[groupId] = unsubscribe;
+    });
+}
 
 function renderAll() {
     renderGroupSelector();
@@ -33,38 +128,12 @@ function renderAll() {
 }
 
 function saveState() {
-    localStorage.setItem('splitfool_state', JSON.stringify(state));
-}
-
-function loadState() {
-    const saved = localStorage.getItem('splitfool_state');
-    if (saved) {
-        try {
-            const parsed = JSON.parse(saved);
-
-            // Migration script for old flat structure
-            if (parsed.people && Array.isArray(parsed.people)) {
-                state = {
-                    activeGroupId: 'g_default',
-                    groups: [{
-                        id: 'g_default',
-                        name: 'My Trip',
-                        people: parsed.people,
-                        expenses: parsed.expenses || []
-                    }]
-                };
-                saveState(); // Save migrated format
-                return;
-            }
-
-            if (parsed.groups) {
-                state = parsed;
-            }
-        } catch (e) {
-            console.error('Failed to parse state from local storage');
-        }
+    const activeGroup = getActiveGroup();
+    if (activeGroup) {
+        db.collection('groups').doc(activeGroup.id).set(activeGroup);
     }
 }
+
 // Currency Names mapping
 const CURRENCY_NAMES = {
     "USD": "US Dollar", "MXN": "Mexican Peso", "EUR": "Euro", "GBP": "British Pound",
@@ -144,13 +213,10 @@ function initGroups() {
             addGroupModal.classList.add('active');
         });
 
-        document.getElementById('save-group-btn').addEventListener('click', () => {
+        document.getElementById('save-group-btn').addEventListener('click', async () => {
             const nameInput = document.getElementById('group-name').value.trim();
             if (nameInput) {
-                const id = 'g_' + Date.now();
-                state.groups.push({ id, name: nameInput, people: [], expenses: [] });
-                state.activeGroupId = id;
-                saveState();
+                await createNewGroup(nameInput);
                 addGroupModal.classList.remove('active');
                 renderAll();
             }
@@ -171,7 +237,7 @@ function initGroups() {
             const newName = document.getElementById('edit-group-name').value.trim();
             if (newName && newName !== "") {
                 activeGroup.name = newName;
-                saveState();
+                saveState(); // push to firebase
                 renderAll();
                 editGroupModal.classList.remove('active');
             }
@@ -191,13 +257,70 @@ function initGroups() {
             deleteGroupModal.classList.add('active');
         });
 
-        document.getElementById('confirm-delete-group-btn').addEventListener('click', () => {
+        document.getElementById('confirm-delete-group-btn').addEventListener('click', async () => {
             const activeGroup = getActiveGroup();
+
+            // Delete from Firebase
+            try {
+                await db.collection('groups').doc(activeGroup.id).delete();
+            } catch (e) {
+                console.error("Error deleting from Firebase:", e);
+            }
+
+            // Remove from local known list
+            savedGroupIds = savedGroupIds.filter(id => id !== activeGroup.id);
+            saveSavedGroupIds();
+
+            // Note: The onSnapshot listener will fire and handle removing it from state.groups automatically!
             state.groups = state.groups.filter(g => g.id !== activeGroup.id);
-            state.activeGroupId = state.groups[0].id;
-            saveState();
+            state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
+
             renderAll();
             deleteGroupModal.classList.remove('active');
+        });
+    }
+
+    // Join and Share Trip Logic
+    const joinGroupBtn = document.getElementById('join-group-btn');
+    const joinGroupModal = document.getElementById('join-group-modal');
+    if (joinGroupBtn && joinGroupModal) {
+        joinGroupBtn.addEventListener('click', () => {
+            document.getElementById('join-group-code').value = '';
+            joinGroupModal.classList.add('active');
+        });
+
+        document.getElementById('confirm-join-group-btn').addEventListener('click', async () => {
+            const code = document.getElementById('join-group-code').value.trim().toUpperCase();
+            if (code && code.length === 6) {
+                if (savedGroupIds.includes(code)) {
+                    alert("You are already in this trip.");
+                    return;
+                }
+
+                const docRef = await db.collection('groups').doc(code).get();
+                if (docRef.exists) {
+                    savedGroupIds.push(code);
+                    saveSavedGroupIds();
+                    state.activeGroupId = code;
+                    await subscribeToGroup(code);
+                    joinGroupModal.classList.remove('active');
+                    renderAll();
+                } else {
+                    alert("Trip code not found.");
+                }
+            } else {
+                alert("Please enter a valid 6-character code.");
+            }
+        });
+    }
+
+    const shareGroupBtn = document.getElementById('share-group-btn');
+    const shareGroupModal = document.getElementById('share-group-modal');
+    if (shareGroupBtn && shareGroupModal) {
+        shareGroupBtn.addEventListener('click', () => {
+            const activeGroup = getActiveGroup();
+            document.getElementById('share-group-code-display').innerText = activeGroup.id;
+            shareGroupModal.classList.add('active');
         });
     }
 }

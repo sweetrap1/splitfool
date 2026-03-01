@@ -31,9 +31,17 @@
                         style="padding:0.5rem 0.75rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
                         <i class="fa-solid fa-trash"></i>
                     </button>
+                    <button class="btn icon-btn" id="share-group-btn" title="Share Trip Code"
+                        style="padding:0.5rem 0.75rem; background:rgba(0,140,255,0.8); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </button>
                     <button class="btn icon-btn" id="add-group-btn" title="Create New Group"
                         style="padding:0.5rem 0.75rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
                         <i class="fa-solid fa-plus"></i>
+                    </button>
+                    <button class="btn icon-btn" id="join-group-btn" title="Join Trip via Code"
+                        style="padding:0.5rem 0.75rem; background:rgba(46,204,113,0.8); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
+                        <i class="fa-solid fa-right-to-bracket"></i>
                     </button>
                 </div>
             </div>
@@ -274,6 +282,51 @@
             </div>
         </div>
     </div>
+
+    <!-- Join Trip Modal -->
+    <div class="modal" id="join-group-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Join a Trip</h3>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Enter 6-Character Trip Code</label>
+                    <input type="text" id="join-group-code" placeholder="e.g. X7B9TQ"
+                        style="text-transform: uppercase;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn primary" id="confirm-join-group-btn">Join Trip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Trip Modal -->
+    <div class="modal" id="share-group-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Share Trip</h3>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <p>Give this code to your friends so they can join this trip and add expenses!</p>
+                <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; margin: 1.5rem 0;">
+                    <h1 id="share-group-code-display"
+                        style="letter-spacing: 0.25rem; margin: 0; color: var(--primary);">------</h1>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn primary close-modal-btn">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase v8 Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <script src="app.js"></script>
 </body>
