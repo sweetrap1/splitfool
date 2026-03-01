@@ -59,7 +59,53 @@ header {
     width: 100%;
     flex-wrap: wrap;
     gap: 1rem;
+    margin-bottom: 1rem;
 }
+
+.group-selector {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+}
+
+.group-dropdown {
+    width: auto;
+    min-width: 150px;
+    margin: 0;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-family: 'Outfit';
+    font-size: 1rem;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s;
+    max-width: 100%;
+}
+
+.icon-btn {
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#share-group-btn {
+    background: rgba(0, 140, 255, 0.8);
+}
+
+#join-group-btn {
+    background: rgba(46, 204, 113, 0.8);
+}
+
 
 .logo {
     font-size: 2rem;
@@ -402,38 +448,10 @@ select option {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.participant.group-selector {
-    display: flex;
-    gap: 0.35rem;
-    /* Smaller gap for mobile */
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: center;
-    /* Center buttons when wrapping */
-    width: 100%;
-}
-
-.group-dropdown {
-    padding: 0.5rem;
+.participant.active {
     background: var(--surface);
     color: var(--text-main);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-family: 'Outfit';
-    font-size: 1rem;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.3s;
-    min-width: 120px;
-    max-width: 100%;
-    flex: 1 1 100%;
-    /* Force dropdown to its own line on mobile */
-    margin-bottom: 0.25rem;
-}
-
-.icon-btn {
-    padding: 0.5rem 0.6rem !important;
-    /* Slightly thinner buttons */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .participant-card {
@@ -547,15 +565,24 @@ select option {
     }
 
     .group-selector {
-        justify-content: center;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0.4rem;
         width: 100%;
-        gap: 0.25rem;
-        /* Super tight gap for 5 buttons */
     }
 
     .group-dropdown {
+        grid-column: 1 / -1;
         width: 100% !important;
-        margin-bottom: 0.5rem !important;
+        margin-bottom: 0 !important;
+    }
+
+    .icon-btn {
+        width: 100%;
+        padding: 0.5rem 0 !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     header {
