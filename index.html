@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitFool - Modern Expense Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-top"
+                style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom: 1rem;">
+                <div class="logo">
+                    <i class="fa-solid fa-coins"></i> SplitFool
+                </div>
+                <div class="group-selector" style="display:flex; gap:0.5rem; align-items:center;">
+                    <select id="active-group-select" class="participant-input"
+                        style="width:auto; min-width:150px; margin:0; padding:0.5rem; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.2);"></select>
+                    <button class="btn icon-btn" id="add-group-btn" title="Create New Group"
+                        style="padding:0.5rem 0.75rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <nav>
+                <button class="nav-btn active" data-tab="people"><i class="fa-solid fa-users"></i> People</button>
+                <button class="nav-btn" data-tab="expenses"><i class="fa-solid fa-receipt"></i> Expenses</button>
+                <button class="nav-btn" data-tab="balances"><i class="fa-solid fa-scale-balanced"></i> Balances</button>
+                <button class="nav-btn" data-tab="settle"><i class="fa-solid fa-handshake"></i> Settle Up</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- People Tab -->
+            <section id="people" class="tab-content active">
+                <div class="header-action">
+                    <h2>Group Members</h2>
+                    <button class="btn primary" id="add-person-btn"><i class="fa-solid fa-plus"></i> Add Person</button>
+                </div>
+                <div class="people-grid" id="people-list">
+                    <!-- Dynamic rendering -->
+                </div>
+            </section>
+
+            <!-- Expenses Tab -->
+            <section id="expenses" class="tab-content">
+                <div class="header-action">
+                    <h2>Trip Expenses</h2>
+                    <button class="btn primary" id="add-expense-btn"><i class="fa-solid fa-plus"></i> Add
+                        Expense</button>
+                </div>
+                <div class="expense-list" id="expense-list">
+                    <!-- Dynamic rendering -->
+                </div>
+            </section>
+
+            <!-- Balances Tab -->
+            <section id="balances" class="tab-content">
+                <h2>Current Balances</h2>
+                <div class="balance-container" id="balances-list">
+                    <!-- Dynamic rendering -->
+                </div>
+            </section>
+
+            <!-- Settle Up Tab -->
+            <section id="settle" class="tab-content">
+                <h2>Debt Simplification</h2>
+                <p class="subtitle">Minimized transactions to settle all debts.</p>
+
+                <div class="card exchange-rate-card" style="margin-bottom: 2rem;">
+                    <h3><i class="fa-solid fa-money-bill-transfer"></i> Settlement Options</h3>
+                    <div class="form-row" style="margin-top: 1rem; align-items: flex-end;">
+                        <div class="form-group half" style="margin-bottom: 0;">
+                            <label for="exchange-rate">Exchange Rate (1 USD = ? MXN)</label>
+                            <input type="number" id="exchange-rate" value="17.00" step="0.01" min="0.01">
+                        </div>
+                        <div class="form-group half" style="margin-bottom: 0;">
+                            <label for="settle-mode">Settle In</label>
+                            <select id="settle-mode">
+                                <option value="separate">Separate Currencies</option>
+                                <option value="USD">Combined in USD</option>
+                                <option value="MXN">Combined in MXN</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settle-container" id="settle-results-container">
+                    <!-- Dynamic rendering based on settle-mode -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Person Modal -->
+    <div id="person-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Person</h3>
+                <button class="close-btn"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="person-name">Name</label>
+                    <input type="text" id="person-name" placeholder="Enter name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn primary" id="save-person-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div id="expense-modal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3>Add Expense</h3>
+                <button class="close-btn"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="expense-desc">Description</label>
+                    <input type="text" id="expense-desc" placeholder="e.g. Dinner at Tacos El Gordo">
+                </div>
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="expense-amount">Amount</label>
+                        <input type="number" id="expense-amount" placeholder="0.00" step="0.01">
+                    </div>
+                    <div class="form-group half">
+                        <label for="expense-currency">Currency</label>
+                        <select id="expense-currency">
+                            <option value="USD">USD ($)</option>
+                            <option value="MXN">MXN ($)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="expense-payer">Paid By</label>
+                    <select id="expense-payer">
+                        <!-- Dynamic -->
+                    </select>
+                </div>
+
+                <div class="split-section">
+                    <h4>Split Options</h4>
+                    <div class="split-tabs">
+                        <button class="split-tab active" data-split="equal">Equal</button>
+                        <button class="split-tab" data-split="exact">Exact Amount</button>
+                        <button class="split-tab" data-split="percent">Percentage</button>
+                        <button class="split-tab" data-split="shares">Shares/Days</button>
+                        <button class="split-tab" data-split="paid_for">Paid for Someone</button>
+                    </div>
+
+                    <div class="participants-list" id="split-participants">
+                        <!-- Dynamic participants based on people -->
+                    </div>
+                    <div id="split-summary" class="split-summary">
+                        Total Split: <span id="split-total-amount">0.00</span> / <span
+                            id="expense-total-display">0.00</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn primary" id="save-expense-btn">Save Expense</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Group Modal -->
+    <div class="modal" id="group-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Group</h3>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Group / Trip Name</label>
+                    <input type="text" id="group-name" placeholder="e.g. Hawaii 2024">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn primary" id="save-group-btn">Create Group</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
