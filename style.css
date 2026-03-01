@@ -485,7 +485,27 @@ select option {
 /* Responsive */
 @media (max-width: 768px) {
     .app-container {
-        padding: 1rem;
+        padding: 0.75rem;
+        /* tighter margins on mobile */
+    }
+
+    .header-top {
+        flex-direction: column !important;
+        /* Force stack */
+        gap: 1rem;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .group-selector {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .group-dropdown {
+        width: 100% !important;
+        /* full width dropdown on mobile */
+        margin-bottom: 0.5rem !important;
     }
 
     header {
@@ -530,5 +550,19 @@ select option {
     .split-tab {
         flex: 1 1 calc(50% - 0.5rem);
         text-align: center;
+    }
+
+    .modal-content {
+        min-width: 95%;
+        /* Use full screen on phones */
+        max-width: 95%;
+        margin: 10px;
+        padding: 1.5rem;
+    }
+
+    .people-grid,
+    .expenses-list {
+        grid-template-columns: 1fr;
+        /* Stack into single column */
     }
 }
