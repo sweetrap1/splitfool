@@ -21,8 +21,16 @@
                     <i class="fa-solid fa-coins"></i> SplitFool
                 </div>
                 <div class="group-selector" style="display:flex; gap:0.5rem; align-items:center;">
-                    <select id="active-group-select" class="participant-input"
-                        style="width:auto; min-width:150px; margin:0; padding:0.5rem; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.2);"></select>
+                    <select id="active-group-select" class="group-dropdown"
+                        style="width:auto; min-width:150px; margin:0; padding:0.5rem; background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.2); border-radius:8px; color:white;"></select>
+                    <button class="btn icon-btn" id="edit-group-btn" title="Edit Group Name"
+                        style="padding:0.5rem 0.75rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="btn icon-btn" id="delete-group-btn" title="Delete Group"
+                        style="padding:0.5rem 0.75rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                     <button class="btn icon-btn" id="add-group-btn" title="Create New Group"
                         style="padding:0.5rem 0.75rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; border-radius:8px;">
                         <i class="fa-solid fa-plus"></i>
@@ -75,18 +83,13 @@
                 <p class="subtitle">Minimized transactions to settle all debts.</p>
 
                 <div class="card exchange-rate-card" style="margin-bottom: 2rem;">
-                    <h3><i class="fa-solid fa-money-bill-transfer"></i> Settlement Options</h3>
+                    <h3><i class="fa-solid fa-earth-americas"></i> Settlement Options</h3>
                     <div class="form-row" style="margin-top: 1rem; align-items: flex-end;">
-                        <div class="form-group half" style="margin-bottom: 0;">
-                            <label for="exchange-rate">Exchange Rate (1 USD = ? MXN)</label>
-                            <input type="number" id="exchange-rate" value="17.00" step="0.01" min="0.01">
-                        </div>
                         <div class="form-group half" style="margin-bottom: 0;">
                             <label for="settle-mode">Settle In</label>
                             <select id="settle-mode">
                                 <option value="separate">Separate Currencies</option>
-                                <option value="USD">Combined in USD</option>
-                                <option value="MXN">Combined in MXN</option>
+                                <!-- Dynamic combined options will render here -->
                             </select>
                         </div>
                     </div>
@@ -142,6 +145,11 @@
                         <select id="expense-currency">
                             <option value="USD">USD ($)</option>
                             <option value="MXN">MXN ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="CAD">CAD ($)</option>
+                            <option value="AUD">AUD ($)</option>
+                            <option value="JPY">JPY (¥)</option>
                         </select>
                     </div>
                 </div>
@@ -194,6 +202,47 @@
             <div class="modal-footer">
                 <button class="btn secondary close-modal-btn">Cancel</button>
                 <button class="btn primary" id="save-group-btn">Create Group</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Group Modal -->
+    <div class="modal" id="edit-group-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Group Name</h3>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>New Group Name</label>
+                    <input type="text" id="edit-group-name" placeholder="Enter new name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn primary" id="save-edit-group-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div class="modal" id="delete-confirm-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="color: var(--danger)">Delete Group</h3>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="delete-confirm-message" style="margin-bottom: 1rem;">Are you sure you want to delete this group?
+                </p>
+                <p class="subtitle" style="color: var(--danger)">This action cannot be undone and all expenses will be
+                    lost.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn outline" id="confirm-delete-group-btn"
+                    style="border-color: var(--danger); color: var(--danger);">Delete Permanentely</button>
             </div>
         </div>
     </div>
