@@ -113,7 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
         console.error("Critical initialization error:", err);
     }
-
     renderAll();
 });
 
