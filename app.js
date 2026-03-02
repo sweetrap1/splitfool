@@ -20,6 +20,7 @@ let state = {
     groups: []
 };
 let unsubscribeListeners = {};
+let userGroupsUnsubscribe = null;
 let currentUser = null;
 
 // Fallback User ID for offline/unauthenticated users
@@ -40,10 +41,20 @@ function isGroupAdmin(group) {
     if (!group.creatorId) return true;
     // If logged in, check UID
     if (currentUser && group.creatorId === currentUser.uid) return true;
-    // If trip was created anonymously on this browser, allow admin
-    const localId = localStorage.getItem('splitfool_user_id');
-    if (group.creatorId === localId) return true;
+    // IMPORTANT: Removing fallback to localStorage user ID for authorization
+    // relying on localStorage for admin privileges is an IDOR vulnerability.
     return false;
+}
+
+// Utility: Escape HTML to prevent XSS
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // Initialization
@@ -69,8 +80,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (authOverlay) authOverlay.classList.add('hidden');
             if (appContainer) appContainer.classList.remove('hidden');
             showAuthStatus("Successfully signed in", "success", 2000);
+
+            // Sync groups across devices
+            syncUserGroups(user.uid);
         } else {
             console.log("Auth state change: No user");
+            syncUserGroups(null); // Stop listener
             myUserId = localStorage.getItem('splitfool_user_id');
             if (loginBtn) loginBtn.classList.remove('hidden');
             if (userInfo) userInfo.classList.add('hidden');
@@ -232,6 +247,41 @@ window.resetLocalCache = function () {
     }
 };
 
+async function syncUserGroups(uid) {
+    if (userGroupsUnsubscribe) {
+        userGroupsUnsubscribe();
+        userGroupsUnsubscribe = null;
+    }
+
+    if (!uid) return;
+
+    console.log("Starting real-time group sync for account:", uid);
+
+    userGroupsUnsubscribe = db.collection('groups')
+        .where('creatorId', '==', uid)
+        .onSnapshot(snapshot => {
+            let addedCount = 0;
+            snapshot.docChanges().forEach(change => {
+                if (change.type === "added" || change.type === "modified") {
+                    const docId = change.doc.id;
+                    if (!savedGroupIds.includes(docId)) {
+                        savedGroupIds.push(docId);
+                        addedCount++;
+                        subscribeToGroup(docId);
+                    }
+                }
+            });
+
+            if (addedCount > 0) {
+                console.log(`Synced ${addedCount} new trips from your account.`);
+                saveSavedGroupIds();
+                renderAll();
+            }
+        }, error => {
+            console.error("Account-level sync error:", error);
+        });
+}
+
 async function initFirebaseData() {
     // Migrate old local data if it exists
     const oldSaved = localStorage.getItem('splitfool_state');
@@ -297,7 +347,7 @@ async function initFirebaseData() {
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
@@ -369,6 +419,7 @@ function renderAll() {
     renderExpenses();
     renderBalances();
     renderSettleUp();
+    updatePayerDropdown();
 }
 
 function saveState() {
@@ -385,7 +436,22 @@ function saveState() {
                 activeGroup.creatorName = 'Anonymous';
             }
         }
-        db.collection('groups').doc(activeGroup.id).set(activeGroup);
+
+        // Use a transaction to prevent race conditions during state updates
+        db.runTransaction(async (transaction) => {
+            const groupRef = db.collection('groups').doc(activeGroup.id);
+            const doc = await transaction.get(groupRef);
+
+            if (!doc.exists) {
+                transaction.set(groupRef, activeGroup);
+                return;
+            }
+
+            // If we are just updating the whole state, merge it carefully or 
+            // since this is a general saveState fallback, just update it.
+            // Ideally individual actions run their own transactions instead of `saveState()`.
+            transaction.update(groupRef, activeGroup);
+        }).catch(err => console.error("Transaction failed: ", err));
     }
 }
 
@@ -534,7 +600,8 @@ function initGroups() {
                 alert("You cannot delete the only remaining group.");
                 return;
             }
-            document.getElementById('delete-confirm-message').innerHTML = `Are you sure you want to delete the group <strong>"${activeGroup.name}"</strong>?`;
+            const safeGroupName = escapeHTML(activeGroup.name);
+            document.getElementById('delete-confirm-message').innerHTML = `Are you sure you want to delete the group <strong>"${safeGroupName}"</strong>?`;
             deleteGroupModal.classList.add('active');
         });
 
@@ -631,7 +698,7 @@ function renderGroupSelector() {
     if (!groupSelect) return;
 
     groupSelect.innerHTML = state.groups.map(g =>
-        `<option value="${g.id}" ${g.id === state.activeGroupId ? 'selected' : ''}>${g.name}</option>`
+        `<option value="${escapeHTML(g.id)}" ${g.id === state.activeGroupId ? 'selected' : ''}>${escapeHTML(g.name)}</option>`
     ).join('');
 
     // Toggle Admin Buttons visibility
@@ -711,21 +778,32 @@ function initModals() {
 
     const editPersonModal = document.getElementById('edit-person-modal');
     if (document.getElementById('save-edit-person-btn')) {
-        document.getElementById('save-edit-person-btn').addEventListener('click', () => {
+        document.getElementById('save-edit-person-btn').addEventListener('click', async () => {
             const id = editPersonModal.dataset.personId;
             const name = document.getElementById('edit-person-name').value.trim();
             let venmo = document.getElementById('edit-person-venmo').value.trim();
 
             if (name !== '') {
                 const activeGroup = getActiveGroup();
-                const person = activeGroup.people.find(p => p.id === id);
-                if (person) {
-                    person.name = name;
-                    if (venmo && !venmo.startsWith('@')) venmo = '@' + venmo;
-                    person.venmoUsername = venmo;
-                    saveState();
-                    renderAll();
+                if (venmo && !venmo.startsWith('@')) venmo = '@' + venmo;
+
+                try {
+                    await db.runTransaction(async (t) => {
+                        const ref = db.collection('groups').doc(activeGroup.id);
+                        const doc = await t.get(ref);
+                        if (!doc.exists) return;
+
+                        let groupData = doc.data();
+                        let pIndex = groupData.people.findIndex(p => p.id === id);
+                        if (pIndex !== -1) {
+                            groupData.people[pIndex].name = name;
+                            groupData.people[pIndex].venmoUsername = venmo;
+                            t.update(ref, { people: groupData.people });
+                        }
+                    });
                     editPersonModal.classList.remove('active');
+                } catch (e) {
+                    console.error("Edit person transaction failed", e);
                 }
             }
         });
@@ -749,22 +827,29 @@ function addPerson(name, venmo) {
     const id = 'p_' + Date.now();
     let venmoUsername = venmo || '';
     if (venmoUsername && !venmoUsername.startsWith('@')) venmoUsername = '@' + venmoUsername;
-    activeGroup.people.push({ id, name, venmoUsername });
-    saveState();
-    renderAll();
+
+    const newPerson = { id, name, venmoUsername };
+
+    db.collection('groups').doc(activeGroup.id).update({
+        people: firebase.firestore.FieldValue.arrayUnion(newPerson)
+    }).catch(e => console.error("Error adding person", e));
 }
 
 function removePerson(id) {
     const activeGroup = getActiveGroup();
-    // Basic validation: Check if they are involved in any expenses
+    // Basic validation: Check if they are involved in any expenses locally first
     const involved = activeGroup.expenses.some(e => e.payerId === id || e.participants.some(p => p.personId === id));
     if (involved) {
         alert('Cannot remove a person involved in expenses.');
         return;
     }
-    activeGroup.people = activeGroup.people.filter(p => p.id !== id);
-    saveState();
-    renderAll();
+
+    const personToRemove = activeGroup.people.find(p => p.id === id);
+    if (personToRemove) {
+        db.collection('groups').doc(activeGroup.id).update({
+            people: firebase.firestore.FieldValue.arrayRemove(personToRemove)
+        }).catch(e => console.error("Error removing person", e));
+    }
 }
 
 // Render Functions stub
@@ -797,19 +882,21 @@ function renderPeople() {
     }
 
     activeGroup.people.forEach(p => {
-        const char = p.name.charAt(0).toUpperCase();
-        const venmoBadge = p.venmoUsername ? `<span style="color:#008CFF; font-size: 0.8em; margin-left: 0.5rem;"><i class="fa-brands fa-venmo"></i> ${p.venmoUsername}</span>` : '';
+        const safeName = escapeHTML(p.name);
+        const char = safeName.charAt(0).toUpperCase();
+        const safeVenmo = escapeHTML(p.venmoUsername);
+        const venmoBadge = safeVenmo ? `<span style="color:#008CFF; font-size: 0.8em; margin-left: 0.5rem;"><i class="fa-brands fa-venmo"></i> ${safeVenmo}</span>` : '';
         list.innerHTML += `
             <div class="card person-card">
                 <div class="person-info">
                     <div class="avatar">${char}</div>
-                    <h3>${p.name} ${venmoBadge}</h3>
+                    <h3>${safeName} ${venmoBadge}</h3>
                 </div>
                 <div style="display:flex; gap: 0.5rem;">
-                    <button class="btn icon-btn" onclick="openEditPersonModal('${p.id}')">
+                    <button class="btn icon-btn" onclick="openEditPersonModal('${escapeHTML(p.id)}')">
                         <i class="fa-solid fa-pen"></i>
                     </button>
-                    <button class="btn danger" onclick="removePerson('${p.id}')">
+                    <button class="btn danger" onclick="removePerson('${escapeHTML(p.id)}')">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -818,17 +905,36 @@ function renderPeople() {
     });
 }
 
+// Helper to populate payer dropdown
+function updatePayerDropdown() {
+    const activeGroup = getActiveGroup();
+    const payerSelect = document.getElementById('expense-payer');
+    if (!payerSelect) return;
+
+    const currentVal = payerSelect.value;
+    payerSelect.innerHTML = activeGroup.people.map(p =>
+        `<option value="${escapeHTML(p.id)}">${escapeHTML(p.name)}</option>`
+    ).join('');
+
+    if (currentVal && activeGroup.people.some(p => p.id === currentVal)) {
+        payerSelect.value = currentVal;
+    } else if (activeGroup.people.length > 0) {
+        payerSelect.value = activeGroup.people[0].id;
+    }
+}
+
 let currentSplitMode = 'equal'; // equal, exact, percent
 
 function resetExpenseForm() {
     const activeGroup = getActiveGroup();
+    document.getElementById('expense-id').value = '';
+    document.getElementById('expense-modal-title').textContent = 'Add Expense';
     document.getElementById('expense-desc').value = '';
     document.getElementById('expense-amount').value = '';
     document.getElementById('expense-currency').value = 'USD';
 
-    // Populate payers
-    const payerSelect = document.getElementById('expense-payer');
-    payerSelect.innerHTML = activeGroup.people.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    // Populate payers with XSS protection
+    updatePayerDropdown();
 
     // Populate participants
     renderSplitParticipants();
@@ -852,27 +958,32 @@ function renderSplitParticipants() {
             <div class="form-group" style="margin-top: 1rem;">
                 <label>Who did you pay for?</label>
                 <select id="paid-for-select" class="participant-input" style="margin-bottom: 1rem;" onchange="updateSplitSummary()">
-                    ${otherPeople.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                    ${otherPeople.map(p => `<option value="${escapeHTML(p.id)}">${escapeHTML(p.name)}</option>`).join('')}
                 </select>
             </div>
         `;
         return; // Early return for paid_for mode
     }
 
-    container.innerHTML = activeGroup.people.map(p => `
-        <div class="participant-card active" id="card_${p.id}" onclick="toggleParticipant('${p.id}')">
+    container.innerHTML = activeGroup.people.map(p => {
+        const safeName = escapeHTML(p.name);
+        const safeId = escapeHTML(p.id);
+        const splitUnit = currentSplitMode === 'percent' ? '%' : (currentSplitMode === 'shares' ? 'shares' : '$');
+
+        return `
+        <div class="participant-card active" id="card_${safeId}" onclick="toggleParticipant('${safeId}')">
             <div class="participant-item-left">
-                <input type="checkbox" id="part_${p.id}" class="participant-cb" value="${p.id}" checked style="display:none;" onchange="updateSplitSummary()">
-                <div class="participant-avatar">${p.name.charAt(0).toUpperCase()}</div>
-                <label for="part_${p.id}" onclick="event.preventDefault()">${p.name}</label>
+                <input type="checkbox" id="part_${safeId}" class="participant-cb" value="${safeId}" checked style="display:none;" onchange="updateSplitSummary()">
+                <div class="participant-avatar">${safeName.charAt(0).toUpperCase()}</div>
+                <label for="part_${safeId}" onclick="event.preventDefault()">${safeName}</label>
             </div>
             <div class="participant-input-container" onclick="event.stopPropagation()">
-                <input type="number" id="input_${p.id}" class="participant-input" placeholder="0" step="0.01" min="0" 
+                <input type="number" id="input_${safeId}" class="participant-input" placeholder="0" step="0.01" min="0" 
                     ${currentSplitMode === 'equal' ? 'disabled' : ''} oninput="updateSplitSummary()">
-                <span class="split-unit">${currentSplitMode === 'percent' ? '%' : currentSplitMode === 'shares' ? 'shares' : '$'}</span>
+                <span class="split-unit">${splitUnit}</span>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 // Global helper for the new touch cards
@@ -1030,20 +1141,30 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
 
     const activeGroup = getActiveGroup();
 
-    if (existingId) {
-        const index = activeGroup.expenses.findIndex(e => e.id === existingId);
-        if (index !== -1) {
-            activeGroup.expenses[index] = expense;
+    db.runTransaction(async (t) => {
+        const ref = db.collection('groups').doc(activeGroup.id);
+        const doc = await t.get(ref);
+        if (!doc.exists) return;
+
+        let groupData = doc.data();
+
+        if (existingId) {
+            const index = groupData.expenses.findIndex(e => e.id === existingId);
+            if (index !== -1) {
+                groupData.expenses[index] = expense;
+            }
+        } else {
+            groupData.expenses.push(expense);
         }
-    } else {
-        activeGroup.expenses.push(expense);
-    }
 
-    saveState();
-    expenseIdInput.value = ''; // Reset
-    document.getElementById('expense-modal').classList.remove('active');
-
-    renderAll();
+        t.update(ref, { expenses: groupData.expenses });
+    }).then(() => {
+        expenseIdInput.value = ''; // Reset
+        document.getElementById('expense-modal').classList.remove('active');
+    }).catch(e => {
+        console.error("Expense transaction failed", e);
+        alert("Failed to save expense. Please try again.");
+    });
 });
 
 window.editExpense = function (id) {
@@ -1055,7 +1176,8 @@ window.editExpense = function (id) {
     document.getElementById('expense-modal').classList.add('active');
     document.getElementById('expense-modal-title').textContent = 'Edit Expense';
 
-    // Fill fields
+    // Populate payers list before setting value
+    updatePayerDropdown();
     document.getElementById('expense-id').value = id;
     document.getElementById('expense-desc').value = expense.description;
     document.getElementById('expense-amount').value = expense.amount;
@@ -1092,10 +1214,13 @@ window.deleteExpense = function (id) {
     if (!confirm('Are you sure you want to delete this expense?')) return;
 
     const activeGroup = getActiveGroup();
-    activeGroup.expenses = activeGroup.expenses.filter(e => e.id !== id);
+    const expenseToRemove = activeGroup.expenses.find(e => e.id === id);
 
-    saveState();
-    renderAll();
+    if (expenseToRemove) {
+        db.collection('groups').doc(activeGroup.id).update({
+            expenses: firebase.firestore.FieldValue.arrayRemove(expenseToRemove)
+        }).catch(e => console.error("Error removing expense", e));
+    }
 };
 
 function renderExpenses() {
@@ -1112,33 +1237,38 @@ function renderExpenses() {
     const sorted = [...activeGroup.expenses].sort((a, b) => b.id.localeCompare(a.id));
 
     sorted.forEach(e => {
-        const payer = activeGroup.people.find(p => p.id === e.payerId)?.name || 'Unknown';
-        const symbol = e.currency === 'USD' ? '<i class="fa-solid fa-dollar-sign"></i>' : (e.currency === 'MXN' ? '<i class="fa-solid fa-peso-sign"></i>' : e.currency);
+        const rawPayerName = activeGroup.people.find(p => p.id === e.payerId)?.name || 'Unknown';
+        const payer = escapeHTML(rawPayerName);
+        const symbol = escapeHTML(e.currency) === 'USD' ? '<i class="fa-solid fa-dollar-sign"></i>' : (escapeHTML(e.currency) === 'MXN' ? '<i class="fa-solid fa-peso-sign"></i>' : escapeHTML(e.currency));
 
-        const participantNames = e.participants.map(part => {
+        const participantNames = escapeHTML(e.participants.map(part => {
             const person = activeGroup.people.find(p => p.id === part.personId);
             return person ? person.name : 'Unknown';
-        }).join(', ');
+        }).join(', '));
+
+        const safeDesc = escapeHTML(e.description);
+        const safeId = escapeHTML(e.id);
+        const safeSplit = escapeHTML(e.splitType);
 
         list.innerHTML += `
-            <div class="card expense-card" id="exp_${e.id}">
+            <div class="card expense-card" id="exp_${safeId}">
                 <div class="expense-header">
                     <div style="flex:1">
-                        <h3>${e.description}</h3>
+                        <h3>${safeDesc}</h3>
                     </div>
                     <div class="amount">${symbol} ${e.amount.toFixed(2)}</div>
                     <div class="expense-actions">
-                        <button class="expense-action-btn edit" onclick="editExpense('${e.id}')" title="Edit Expense">
+                        <button class="expense-action-btn edit" onclick="editExpense('${safeId}')" title="Edit Expense">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <button class="expense-action-btn delete" onclick="deleteExpense('${e.id}')" title="Delete Expense">
+                        <button class="expense-action-btn delete" onclick="deleteExpense('${safeId}')" title="Delete Expense">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
                 </div>
                 <div class="expense-details">
                     <span class="payer-badge">Paid by ${payer}</span>
-                    <span class="split-info">For: ${participantNames} (${e.splitType})</span>
+                    <span class="split-info">For: ${participantNames} (${safeSplit})</span>
                 </div>
             </div>
         `;
@@ -1230,12 +1360,16 @@ function renderBalances() {
             }
         }
 
+        const safeName = escapeHTML(p.name);
+        const safeId = escapeHTML(p.id);
+        const char = safeName.charAt(0).toUpperCase();
+
         list.innerHTML += `
             <div class="card person-card">
                 <div class="person-info">
-                    <div class="avatar">${p.name.charAt(0).toUpperCase()}</div>
+                    <div class="avatar">${char}</div>
                     <div>
-                        <h3>${p.name}</h3>
+                        <h3>${safeName}</h3>
                         ${balanceHtml}
                     </div>
                 </div>
@@ -1367,14 +1501,17 @@ function renderSettleUp() {
                 venmoBtn = `<a href="${venmoUrl}" target="_blank" class="btn" style="background:#008CFF; color:white; padding:0.25rem 0.5rem; text-decoration:none; font-size:0.8rem; border-radius:4px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="fa-brands fa-venmo"></i> Pay</a>`;
             }
 
+            const safeFromName = escapeHTML(fromName);
+            const safeToName = escapeHTML(toName);
+
             html += `
                 <li style="list-style:none;">
                     <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="display:flex; align-items:center;">
-                            <strong>${fromName}</strong>&nbsp;pays&nbsp;<strong>${toName}</strong>
+                            <strong>${safeFromName}</strong>&nbsp;pays&nbsp;<strong>${safeToName}</strong>
                             ${venmoBtn}
                         </div>
-                        <div class="amount positive">${tx.amount.toFixed(2)} ${currency}</div>
+                        <div class="amount positive">${tx.amount.toFixed(2)} ${escapeHTML(currency)}</div>
                     </div>
                 </li>
             `;
@@ -1451,23 +1588,4 @@ function renderSettleUp() {
 // Call fetch on load
 fetchExchangeRate();
 
-function resetExpenseForm() {
-    document.getElementById('expense-id').value = '';
-    document.getElementById('expense-modal-title').textContent = 'Add Expense';
-    document.getElementById('expense-desc').value = '';
-    document.getElementById('expense-amount').value = '';
-    document.getElementById('expense-currency').value = 'USD';
-
-    const activeGroup = getActiveGroup();
-    if (activeGroup.people.length > 0) {
-        document.getElementById('expense-payer').value = activeGroup.people[0].id;
-    }
-
-    currentSplitMode = 'equal';
-    document.querySelectorAll('.split-tab').forEach(t => {
-        t.classList.toggle('active', t.getAttribute('data-split') === 'equal');
-    });
-
-    renderSplitParticipants();
-    updateSplitSummary();
-}
+// End of file cleanup (removed duplicate resetExpenseForm)
