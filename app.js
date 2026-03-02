@@ -1423,71 +1423,113 @@ function simplifyDebts(balances, currency) {
 }
 
 // Settlement Event Listeners
-document.getElementById('exchange-rate')?.addEventListener('input', renderSettleUp);
-document.getElementById('settle-mode')?.addEventListener('change', renderSettleUp);
+document.getElementById('manual-rate')?.addEventListener('input', renderSettleUp);
+document.getElementById('settle-mode')?.addEventListener('change', () => {
+    // Clear manual rate when switching modes
+    const manualRate = document.getElementById('manual-rate');
+    if (manualRate) manualRate.value = '';
+    renderSettleUp();
+});
 
 function renderSettleUp() {
     const activeGroup = getActiveGroup();
     const container = document.getElementById('settle-results-container');
     const modeSelect = document.getElementById('settle-mode');
-    if (!container || !modeSelect) return; // fail safe
+    const breakdownContainer = document.getElementById('settlement-breakdown');
+    const breakdownList = document.getElementById('breakdown-list');
+    const manualRateContainer = document.getElementById('manual-rate-container');
+    const manualRateInput = document.getElementById('manual-rate');
+
+    if (!container || !modeSelect) return;
 
     container.innerHTML = '';
+    if (breakdownContainer) breakdownContainer.classList.add('hidden');
 
     if (activeGroup.people.length === 0 || activeGroup.expenses.length === 0) {
         container.innerHTML = '<div><p class="subtitle">No debts to settle.</p></div>';
+        if (manualRateContainer) manualRateContainer.classList.add('hidden');
         return;
     }
 
     const balances = calculateBalances();
 
-    // 1. Find all unique currencies used in this group
+    // 1. Find all unique currencies used and group totals
+    const groupTotals = {};
     const usedCurrencies = new Set();
+    activeGroup.expenses.forEach(e => {
+        if (!groupTotals[e.currency]) groupTotals[e.currency] = 0;
+        groupTotals[e.currency] += e.amount;
+        usedCurrencies.add(e.currency);
+    });
+
     for (const [personId, personBals] of Object.entries(balances)) {
         for (const [cur, amt] of Object.entries(personBals)) {
             if (Math.abs(amt) > 0.01) usedCurrencies.add(cur);
         }
     }
 
-    // Fallback if somehow no debts
     if (usedCurrencies.size === 0) {
         container.innerHTML = '<div class="card" style="text-align:center; padding: 1rem;">All settled up! 🎉</div>';
+        if (manualRateContainer) manualRateContainer.classList.add('hidden');
         return;
     }
 
-    // 2. Populate the Settle Mode dropdown
+    // 2. Populate options
     const currentMode = modeSelect.value;
-    let optionsHtml = '<option value="separate">Separate Currencies</option>';
-
-    // Always offer major world currencies to combine into, plus any extras used
     let availableTargets;
     if (cachedExchangeRates) {
-        availableTargets = new Set(Object.keys(cachedExchangeRates).sort());
+        availableTargets = Object.keys(cachedExchangeRates).sort();
     } else {
-        availableTargets = new Set(['USD', 'MXN', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', ...usedCurrencies]);
+        availableTargets = Array.from(new Set(['USD', 'PHP', 'MXN', 'EUR', 'GBP', ...usedCurrencies])).sort();
     }
 
+    let optionsHtml = '<option value="separate">Separate Currencies (More Transactions)</option>';
     availableTargets.forEach(cur => {
-        optionsHtml += `<option value="${cur}">${getCurrencyLabel(cur)}</option>`;
+        optionsHtml += `<option value="${cur}">${getCurrencyLabel(cur)} (Simplified)</option>`;
     });
 
-    // Only rewrite innerHTML if it has actually changed to prevent resetting the dropdown constantly
     if (modeSelect.innerHTML !== optionsHtml) {
         modeSelect.innerHTML = optionsHtml;
-    }
 
-    // Restore selection if valid, else default
-    if (['separate', ...availableTargets].includes(currentMode)) {
-        modeSelect.value = currentMode;
-    } else {
-        modeSelect.value = 'separate';
+        // AUTO-DEFAULT LOGIC
+        if (currentMode === 'separate' || !currentMode) {
+            if (usedCurrencies.size > 1) {
+                // Pick the most used currency
+                let bestCur = 'USD';
+                let maxTotal = -1;
+                for (const [cur, total] of Object.entries(groupTotals)) {
+                    if (total > maxTotal) {
+                        maxTotal = total;
+                        bestCur = cur;
+                    }
+                }
+                modeSelect.value = bestCur;
+            } else {
+                modeSelect.value = 'separate';
+            }
+        } else {
+            modeSelect.value = currentMode;
+        }
     }
 
     const activeMode = modeSelect.value;
+    const isCombined = activeMode !== 'separate';
+
+    // Toggle Manual Rate UI
+    if (isCombined && usedCurrencies.size > 1) {
+        if (manualRateContainer) {
+            manualRateContainer.classList.remove('hidden');
+            const otherCur = Array.from(usedCurrencies).find(c => c !== activeMode) || 'USD';
+            document.getElementById('manual-rate-source').textContent = otherCur;
+            document.getElementById('manual-rate-target').textContent = activeMode;
+        }
+    } else {
+        if (manualRateContainer) manualRateContainer.classList.add('hidden');
+    }
 
     const renderTxList = (transactions, currency) => {
         if (transactions.length === 0) return '';
-        let html = '<ul class="settle-list">';
+        let html = '<ul class="settle-list" style="padding: 0; margin-top: 1rem;">';
         transactions.forEach(tx => {
             const fromPerson = activeGroup.people.find(p => p.id === tx.from);
             const toPerson = activeGroup.people.find(p => p.id === tx.to);
@@ -1501,17 +1543,14 @@ function renderSettleUp() {
                 venmoBtn = `<a href="${venmoUrl}" target="_blank" class="btn" style="background:#008CFF; color:white; padding:0.25rem 0.5rem; text-decoration:none; font-size:0.8rem; border-radius:4px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="fa-brands fa-venmo"></i> Pay</a>`;
             }
 
-            const safeFromName = escapeHTML(fromName);
-            const safeToName = escapeHTML(toName);
-
             html += `
-                <li style="list-style:none;">
-                    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                <li style="list-style:none; margin-bottom: 0.5rem;">
+                    <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding: 0.75rem 1rem;">
                         <div style="display:flex; align-items:center;">
-                            <strong>${safeFromName}</strong>&nbsp;pays&nbsp;<strong>${safeToName}</strong>
+                            <strong>${escapeHTML(fromName)}</strong>&nbsp;pays&nbsp;<strong>${escapeHTML(toName)}</strong>
                             ${venmoBtn}
                         </div>
-                        <div class="amount positive">${tx.amount.toFixed(2)} ${escapeHTML(currency)}</div>
+                        <div class="amount positive" style="font-weight: 800;">${tx.amount.toFixed(2)} ${escapeHTML(currency)}</div>
                     </div>
                 </li>
             `;
@@ -1520,7 +1559,7 @@ function renderSettleUp() {
         return html;
     };
 
-    if (activeMode === 'separate') {
+    if (!isCombined) {
         let finalHtml = '';
         usedCurrencies.forEach(cur => {
             const txs = simplifyDebts(balances, cur);
@@ -1533,56 +1572,193 @@ function renderSettleUp() {
         });
         container.innerHTML = finalHtml || '<div class="card" style="text-align:center; padding: 1rem;">All settled up! 🎉</div>';
     } else {
-        // Combined mode
         const targetCurrency = activeMode;
+        const manualRate = parseFloat(manualRateInput?.value);
 
-        // Ensure we have rates
-        if (!cachedExchangeRates) {
-            container.innerHTML = '<div class="card" style="color:var(--danger)">Loading live exchange rates... Please try again in a moment.</div>';
+        if (!cachedExchangeRates && isNaN(manualRate)) {
+            container.innerHTML = '<div class="card" style="color:var(--danger)">No exchange rates available. Please enter a manual rate above.</div>';
             return;
         }
 
-        let conversionSummary = '';
-        usedCurrencies.forEach(cur => {
-            if (cur !== targetCurrency && cachedExchangeRates[cur] && cachedExchangeRates[targetCurrency]) {
-                const rate = cachedExchangeRates[targetCurrency] / cachedExchangeRates[cur];
-                conversionSummary += `<li>1 ${cur} = ${rate.toFixed(4)} ${targetCurrency}</li>`;
-            }
-        });
+        // Show Breakdown
+        if (breakdownContainer && breakdownList) {
+            breakdownContainer.classList.remove('hidden');
+            let bHtml = '<table style="width:100%; border-collapse: collapse;">';
+            bHtml += '<tr style="border-bottom: 1px solid rgba(255,255,255,0.1);"><th style="text-align:left; padding: 0.5rem 0;">Currency</th><th style="text-align:right;">Subtotal</th><th style="text-align:right;">Rate</th><th style="text-align:right;">Total (${targetCurrency})</th></tr>';
 
-        // Convert all balances to target currency first
+            let grandTotal = 0;
+            usedCurrencies.forEach(cur => {
+                const subtotal = groupTotals[cur] || 0;
+                let rate = 1;
+
+                if (cur !== targetCurrency) {
+                    if (!isNaN(manualRate)) {
+                        rate = manualRate;
+                    } else if (cachedExchangeRates && cachedExchangeRates[cur] && cachedExchangeRates[targetCurrency]) {
+                        rate = cachedExchangeRates[targetCurrency] / cachedExchangeRates[cur];
+                    }
+                }
+
+                const converted = subtotal * rate;
+                grandTotal += converted;
+
+                bHtml += `
+                    <tr>
+                        <td style="padding: 0.5rem 0;">${cur}</td>
+                        <td style="text-align:right;">${subtotal.toFixed(2)}</td>
+                        <td style="text-align:right; color: var(--text-muted); font-size: 0.8rem;">${cur === targetCurrency ? '-' : rate.toFixed(4)}</td>
+                        <td style="text-align:right; font-weight: 600;">${converted.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            bHtml += `<tr style="border-top: 2px solid var(--primary);"><td colspan="3" style="padding-top: 0.5rem; text-align:right; font-weight: 800;">Grand Total:</td><td style="padding-top: 0.5rem; text-align:right; font-weight: 800; color: var(--primary);">${grandTotal.toFixed(2)} ${targetCurrency}</td></tr>`;
+            bHtml += '</table>';
+            breakdownList.innerHTML = bHtml;
+        }
+
         const combinedBalances = {};
-
         for (const [personId, personBals] of Object.entries(balances)) {
             let combinedAmount = 0;
             for (const [cur, amt] of Object.entries(personBals)) {
                 if (cur === targetCurrency) {
                     combinedAmount += amt;
-                } else if (cachedExchangeRates[cur] && cachedExchangeRates[targetCurrency]) {
-                    // Convert from 'cur' to USD, then USD to 'targetCurrency'
-                    const amountInUSD = amt / cachedExchangeRates[cur];
-                    const amountInTarget = amountInUSD * cachedExchangeRates[targetCurrency];
-                    combinedAmount += amountInTarget;
+                } else {
+                    let rate = 1;
+                    if (!isNaN(manualRate)) {
+                        rate = manualRate;
+                    } else if (cachedExchangeRates && cachedExchangeRates[cur] && cachedExchangeRates[targetCurrency]) {
+                        rate = cachedExchangeRates[targetCurrency] / cachedExchangeRates[cur];
+                    }
+                    combinedAmount += (amt * rate);
                 }
             }
             combinedBalances[personId] = { [targetCurrency]: combinedAmount };
         }
 
         const transactions = simplifyDebts(combinedBalances, targetCurrency);
-
         container.innerHTML = `
-            <h3><i class="fa-solid fa-earth-americas"></i> Combined ${targetCurrency} Settlements</h3>
-            ${conversionSummary ? `
-                <div class="subtitle" style="margin-bottom: 1rem; font-size: 0.85rem;">
-                    <strong><i class="fa-solid fa-bolt" style="color:var(--success)"></i> Live Rates Applied:</strong>
-                    <ul style="margin: 0.25rem 0 0 1.5rem; color: var(--text-muted);">
-                        ${conversionSummary}
-                    </ul>
-                </div>
-            ` : ''}
+            <h3><i class="fa-solid fa-bolt" style="color:var(--success)"></i> Simplified ${targetCurrency} Settlements</h3>
+            <p class="subtitle" style="margin-bottom: 1rem;">All debts converted and minimized to just ${transactions.length} transactions.</p>
             ${renderTxList(transactions, targetCurrency)}
         `;
+
+        renderMemberBreakdown(balances, targetCurrency, manualRate);
     }
+}
+
+function renderMemberBreakdown(balances, targetCurrency, manualRate) {
+    const activeGroup = getActiveGroup();
+    const section = document.getElementById('member-breakdown-section');
+    const list = document.getElementById('member-breakdown-list');
+
+    if (!section || !list) return;
+    section.classList.remove('hidden');
+    list.innerHTML = '';
+
+    activeGroup.people.forEach(person => {
+        const personBals = balances[person.id] || {};
+        let combinedBalance = 0;
+        let detailsHtml = '';
+
+        // Calculate combined balance and build details
+        activeGroup.expenses.forEach(e => {
+            const isPayer = e.payerId === person.id;
+            const participant = e.participants.find(p => p.personId === person.id);
+
+            if (isPayer || participant) {
+                let rate = 1;
+                if (e.currency !== targetCurrency) {
+                    if (!isNaN(manualRate)) {
+                        rate = manualRate;
+                    } else if (cachedExchangeRates && cachedExchangeRates[e.currency] && cachedExchangeRates[targetCurrency]) {
+                        rate = cachedExchangeRates[targetCurrency] / cachedExchangeRates[e.currency];
+                    }
+                }
+
+                const paid = isPayer ? e.amount : 0;
+                let owed = 0;
+                if (participant) {
+                    if (e.splitType === 'equal') {
+                        owed = e.amount / e.participants.length;
+                    } else if (e.splitType === 'exact' || e.splitType === 'paid_for') {
+                        owed = participant.share;
+                    } else if (e.splitType === 'percent') {
+                        owed = (e.amount * participant.share) / 100;
+                    } else if (e.splitType === 'shares') {
+                        const totalShares = e.participants.reduce((sum, p) => sum + p.share, 0);
+                        if (totalShares > 0) {
+                            owed = e.amount * (participant.share / totalShares);
+                        }
+                    }
+                }
+
+                const net = paid - owed;
+                combinedBalance += (net * rate);
+
+                const payerPerson = activeGroup.people.find(p => p.id === e.payerId);
+                const payerName = payerPerson ? payerPerson.name : 'Someone';
+
+                const paidVal = isPayer ? e.amount : 0;
+                const borrowedVal = (participant && owed > 0) ? owed : 0;
+
+                let paidStr = paidVal > 0 ? `${paidVal.toFixed(2)} <span class="cur-label">${e.currency}</span>` : '<span style="opacity:0.3">-</span>';
+                let borrowedStr = borrowedVal > 0 ? `${borrowedVal.toFixed(2)} <span class="cur-label">${e.currency}</span>` : '<span style="opacity:0.3">-</span>';
+
+                if (borrowedVal > 0 && !isPayer) {
+                    borrowedStr += `<br><span style="font-size:0.7rem; opacity:0.6;">from ${escapeHTML(payerName)}</span>`;
+                }
+
+                detailsHtml += `
+                    <div class="expense-row grid-row">
+                        <div class="col-desc">
+                            <strong>${escapeHTML(e.description)}</strong>
+                        </div>
+                        <div class="col-paid">
+                            <span class="mobile-label">Paid</span>
+                            ${paidStr}
+                        </div>
+                        <div class="col-borrowed">
+                            <span class="mobile-label">Borrowed</span>
+                            ${borrowedStr}
+                        </div>
+                        <div class="col-net ${net >= 0 ? 'positive' : 'negative'}">
+                            <span class="mobile-label">Net</span>
+                            ${(net * rate).toFixed(2)} <span class="cur-label">${targetCurrency}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        if (detailsHtml === '') return;
+
+        const card = document.createElement('div');
+        card.className = 'member-balance-card';
+        card.innerHTML = `
+            <div class="member-balance-header" onclick="this.nextElementSibling.classList.toggle('collapsed'); this.classList.toggle('expanded');" style="cursor: pointer;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <div class="avatar" style="width:40px; height:40px; font-size:1rem;">${person.name.charAt(0)}</div>
+                    <h4 style="margin:0;">${escapeHTML(person.name)}</h4>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div class="amount ${combinedBalance >= 0 ? 'positive' : 'negative'}" style="font-size:1.2rem; font-weight:800;">
+                        ${combinedBalance >= 0 ? '+' : ''}${combinedBalance.toFixed(2)} ${targetCurrency}
+                    </div>
+                    <i class="fa-solid fa-chevron-down toggle-icon" style="transition: transform 0.3s; color: var(--text-muted); font-size: 0.9rem;"></i>
+                </div>
+            </div>
+            <div class="member-balance-body collapsed">
+                <div class="expense-table-header">
+                    <div class="col-desc">Expense</div>
+                    <div class="col-paid">Paid</div>
+                    <div class="col-borrowed">Borrowed</div>
+                    <div class="col-net">Net</div>
+                </div>
+                ${detailsHtml}
+            </div>
+        `;
+        list.appendChild(card);
+    });
 }
 
 // Call fetch on load

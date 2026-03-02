@@ -1001,3 +1001,216 @@ select option {
         /* Stack into single column */
     }
 }
+
+/* Settlement Breakdown Styles */
+.breakdown-list table {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0 1rem;
+    font-size: 0.95rem;
+}
+
+.breakdown-list th {
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05rem;
+}
+
+.breakdown-list td,
+.breakdown-list th {
+    padding: 12px 0;
+}
+
+.member-breakdown-container {
+    margin-top: 3rem;
+    border-top: 2px solid var(--border-color);
+    padding-top: 3rem;
+}
+
+.member-balance-card {
+    background: linear-gradient(145deg, var(--card-bg), rgba(26, 31, 53, 0.4));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 1.75rem;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.member-balance-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+.member-balance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+    transition: margin-bottom 0.3s, padding-bottom 0.3s;
+}
+
+.member-balance-header.expanded {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.member-balance-header.expanded .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.member-balance-body {
+    max-height: 2000px;
+    /* Arbitrary large number for max-height transition */
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, margin-top 0.3s;
+    opacity: 1;
+}
+
+.member-balance-body.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+}
+
+.member-balance-header h4 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: 0.02rem;
+}
+
+.expense-table-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 0 18px 8px 18px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 8px;
+}
+
+.expense-row.grid-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    transition: background 0.2s;
+}
+
+.expense-row.grid-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.expense-row:last-child {
+    margin-bottom: 0px;
+}
+
+.col-desc {
+    text-align: left;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.col-desc strong {
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.col-paid,
+.col-borrowed {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+
+.col-net {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    font-size: 1.05rem;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+}
+
+.col-net.positive {
+    color: var(--success);
+    border: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.col-net.negative {
+    color: var(--danger);
+    border: 1px solid rgba(255, 68, 68, 0.15);
+}
+
+.cur-label {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+.mobile-label {
+    display: none;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.05rem;
+}
+
+@media (max-width: 650px) {
+    .expense-table-header {
+        display: none;
+    }
+
+    .expense-row.grid-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .col-paid,
+    .col-borrowed,
+    .col-net {
+        text-align: right;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.75rem;
+        border-top: 1px dotted rgba(255, 255, 255, 0.05);
+    }
+
+    .mobile-label {
+        display: inline-block;
+    }
+
+    .col-net {
+        background: transparent;
+        padding: 0.75rem 0 0 0;
+        border-radius: 0;
+    }
+
+    .col-net.positive,
+    .col-net.negative {
+        border: none;
+        border-top: 1px dotted rgba(255, 255, 255, 0.05);
+    }
+}

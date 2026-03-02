@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SplitFool - Modern Expense Tracker</title>
-    <link rel="stylesheet" href="style.css?v=1.0.3">
+    <link rel="stylesheet" href="style.css?v=1.0.7">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -146,11 +146,30 @@
                                 <!-- Dynamic combined options will render here -->
                             </select>
                         </div>
+                        <div class="form-group half hidden" id="manual-rate-container" style="margin-bottom: 0;">
+                            <label for="manual-rate">Manual Rate (1 <span id="manual-rate-source"></span> = X <span
+                                    id="manual-rate-target"></span>)</label>
+                            <input type="number" id="manual-rate" step="0.0001" placeholder="Enter rate">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="settlement-breakdown" class="card hidden" style="margin-bottom: 2rem;">
+                    <h3><i class="fa-solid fa-chart-pie"></i> Group Totals Breakdown</h3>
+                    <div id="breakdown-list" class="breakdown-list">
+                        <!-- Dynamic -->
                     </div>
                 </div>
 
                 <div class="settle-container" id="settle-results-container">
                     <!-- Dynamic rendering based on settle-mode -->
+                </div>
+
+                <div id="member-breakdown-section" class="member-breakdown-container hidden">
+                    <h2 style="margin-bottom: 2rem; text-align: center;">Personal Math Breakdowns</h2>
+                    <div id="member-breakdown-list">
+                        <!-- Dynamic -->
+                    </div>
                 </div>
             </section>
         </main>
