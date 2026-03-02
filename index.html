@@ -79,6 +79,9 @@
                     <button class="btn icon-btn" id="delete-group-btn" title="Delete Group">
                         <i class="fa-solid fa-trash"></i>
                     </button>
+                    <button class="btn icon-btn" id="leave-group-btn" title="Leave Trip" style="display: none;">
+                        <i class="fa-solid fa-person-walking-arrow-right"></i>
+                    </button>
                     <button class="btn icon-btn" id="share-group-btn" title="Share Trip Code">
                         <i class="fa-solid fa-user-plus"></i>
                     </button>
@@ -345,6 +348,26 @@
                 <button class="btn secondary close-modal-btn">Cancel</button>
                 <button class="btn outline" id="confirm-delete-group-btn"
                     style="border-color: var(--danger); color: var(--danger);">Delete Permanentely</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Confirm Modal -->
+    <div class="modal" id="leave-confirm-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="color: var(--danger)">Leave Group</h3>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="leave-confirm-message" style="margin-bottom: 1rem;">Are you sure you want to leave this group?
+                </p>
+                <p class="subtitle" style="color: var(--danger)">You will no longer see this trip on your dashboard.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary close-modal-btn">Cancel</button>
+                <button class="btn outline" id="confirm-leave-group-btn"
+                    style="border-color: var(--danger); color: var(--danger);">Leave Trip</button>
             </div>
         </div>
     </div>

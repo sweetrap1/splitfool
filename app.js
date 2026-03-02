@@ -32,15 +32,26 @@ if (!myUserId) {
 
 function getActiveGroup() {
     const group = state.groups.find(g => g.id === state.activeGroupId) || state.groups[0];
-    return group || { id: 'loading', name: 'Loading...', people: [], expenses: [], creatorId: null };
+    if (group) return group;
+
+    // Check if genuinely no groups vs loading
+    if (savedGroupIds.length === 0) {
+        return { id: 'no_groups', name: 'No Trips - Join or Create one!', people: [], expenses: [], creatorId: null };
+    }
+
+    return { id: 'loading', name: 'Loading...', people: [], expenses: [], creatorId: null };
 }
 
 function isGroupAdmin(group) {
     if (!group) return false;
+    if (group.id === 'no_groups' || group.id === 'loading') return false;
+
     // If no creatorId at all (legacy), anyone can admin
     if (!group.creatorId) return true;
+
     // If logged in, check UID
     if (currentUser && group.creatorId === currentUser.uid) return true;
+
     // IMPORTANT: Removing fallback to localStorage user ID for authorization
     // relying on localStorage for admin privileges is an IDOR vulnerability.
     return false;
@@ -329,10 +340,7 @@ async function initFirebaseData() {
         }
     }
 
-    // Default if no saved groups
-    if (savedGroupIds.length === 0) {
-        await createNewGroup("My Trip");
-    }
+    // No default group creation. We require the user to explicitly create or join.
 
     const promises = savedGroupIds.map(id => subscribeToGroup(id));
     await Promise.all(promises);
@@ -424,7 +432,7 @@ function renderAll() {
 
 function saveState() {
     const activeGroup = getActiveGroup();
-    if (activeGroup && activeGroup.id && activeGroup.id !== 'loading' && activeGroup.id !== 'offline_error') {
+    if (activeGroup && activeGroup.id && activeGroup.id !== 'loading' && activeGroup.id !== 'offline_error' && activeGroup.id !== 'no_groups') {
         // Claim logic: if no creatorId, the person saving it becomes the creator
         if (!activeGroup.creatorId) {
             if (currentUser) {
@@ -628,6 +636,37 @@ function initGroups() {
         });
     }
 
+    const leaveGroupBtn = document.getElementById('leave-group-btn');
+    const leaveGroupModal = document.getElementById('leave-confirm-modal');
+    if (leaveGroupBtn && leaveGroupModal) {
+        leaveGroupBtn.addEventListener('click', () => {
+            const activeGroup = getActiveGroup();
+            if (activeGroup.id === 'no_groups' || activeGroup.id === 'loading') return;
+            leaveGroupModal.classList.add('active');
+        });
+
+        document.getElementById('confirm-leave-group-btn').addEventListener('click', () => {
+            const activeGroup = getActiveGroup();
+
+            // Remove from local known list
+            savedGroupIds = savedGroupIds.filter(id => id !== activeGroup.id);
+            saveSavedGroupIds();
+
+            // Unsubscribe
+            if (unsubscribeListeners[activeGroup.id]) {
+                unsubscribeListeners[activeGroup.id]();
+                delete unsubscribeListeners[activeGroup.id];
+            }
+
+            // Remove from state
+            state.groups = state.groups.filter(g => g.id !== activeGroup.id);
+            state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
+
+            renderAll();
+            leaveGroupModal.classList.remove('active');
+        });
+    }
+
     // Join and Share Trip Logic
     const joinGroupBtn = document.getElementById('join-group-btn');
     const joinGroupModal = document.getElementById('join-group-modal');
@@ -707,9 +746,11 @@ function renderGroupSelector() {
 
     const editBtn = document.getElementById('edit-group-btn');
     const deleteBtn = document.getElementById('delete-group-btn');
+    const leaveBtn = document.getElementById('leave-group-btn');
 
     if (editBtn) editBtn.style.display = isAdmin ? 'flex' : 'none';
     if (deleteBtn) deleteBtn.style.display = isAdmin ? 'flex' : 'none';
+    if (leaveBtn) leaveBtn.style.display = (!isAdmin && activeGroup.id !== 'no_groups' && activeGroup.id !== 'loading') ? 'flex' : 'none';
 }
 
 // Navigation Logic
@@ -742,6 +783,11 @@ function initModals() {
     // Add Person Modal
     const personModal = document.getElementById('person-modal');
     document.getElementById('add-person-btn').addEventListener('click', () => {
+        const activeGroup = getActiveGroup();
+        if (activeGroup.id === 'no_groups' || activeGroup.id === 'loading') {
+            alert('Please create or join a trip first.');
+            return;
+        }
         document.getElementById('person-name').value = '';
         document.getElementById('person-venmo').value = '';
         personModal.classList.add('active');
@@ -751,6 +797,10 @@ function initModals() {
     const expenseModal = document.getElementById('expense-modal');
     document.getElementById('add-expense-btn').addEventListener('click', () => {
         const activeGroup = getActiveGroup();
+        if (activeGroup.id === 'no_groups' || activeGroup.id === 'loading') {
+            alert('Please create or join a trip first.');
+            return;
+        }
         if (activeGroup.people.length < 2) {
             alert('Please add at least 2 people first.');
             return;
@@ -824,6 +874,8 @@ window.openEditPersonModal = function (id) {
 
 function addPerson(name, venmo) {
     const activeGroup = getActiveGroup();
+    if (activeGroup.id === 'no_groups' || activeGroup.id === 'loading') return;
+
     const id = 'p_' + Date.now();
     let venmoUsername = venmo || '';
     if (venmoUsername && !venmoUsername.startsWith('@')) venmoUsername = '@' + venmoUsername;
