@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const appContainer = document.querySelector('.app-container');
 
         if (user) {
+            console.log("Auth state change: User logged in", user.displayName);
             myUserId = user.uid;
             if (loginBtn) loginBtn.classList.add('hidden');
             if (userInfo) {
@@ -67,13 +68,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Gate UI
             if (authOverlay) authOverlay.classList.add('hidden');
             if (appContainer) appContainer.classList.remove('hidden');
+            showAuthStatus("Successfully signed in", "success", 2000);
         } else {
+            console.log("Auth state change: No user");
             myUserId = localStorage.getItem('splitfool_user_id');
             if (loginBtn) loginBtn.classList.remove('hidden');
             if (userInfo) userInfo.classList.add('hidden');
 
-            // Gate UI - Only show app if we have saved groups (optional preference)
-            // But user asked for FORCE login, so let's stick to showing overlay if no user
             if (authOverlay) authOverlay.classList.remove('hidden');
             if (appContainer) appContainer.classList.add('hidden');
         }
@@ -117,25 +118,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initAuth() {
-    const loginHandler = () => {
-        console.log("Login button clicked. Attempting Google Auth...");
-        // Detect if we're on mobile
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const loginHandler = async () => {
+        showAuthStatus("Initializing Google Login...", "");
+        const googleBtn = document.getElementById('google-login-btn');
+        if (googleBtn) googleBtn.disabled = true;
 
-        if (isMobile) {
-            console.log("Mobile detected. Using Redirect.");
-            auth.signInWithRedirect(provider).catch(handleAuthError);
-        } else {
-            console.log("Desktop detected. Using Popup.");
-            auth.signInWithPopup(provider).catch(error => {
-                // If popup is blocked, fallback to redirect
-                if (error.code === 'auth/popup-blocked') {
-                    console.log("Popup blocked. Falling back to Redirect.");
-                    auth.signInWithRedirect(provider).catch(handleAuthError);
-                } else {
-                    handleAuthError(error);
-                }
-            });
+        console.log("Attempting Popup login (unified strategy)...");
+        try {
+            await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+            await auth.signInWithPopup(provider);
+            console.log("Popup login success.");
+        } catch (error) {
+            console.warn("Popup blocked or failed. Error code:", error.code);
+
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+                showAuthStatus("Popup blocked. Redirecting...", "");
+                console.log("Falling back to Redirect.");
+                auth.signInWithRedirect(provider).catch(err => {
+                    handleAuthError(err);
+                    showAuthStatus("Login failed: " + err.message, "error");
+                    if (googleBtn) googleBtn.disabled = false;
+                });
+            } else {
+                handleAuthError(error);
+                showAuthStatus("Login error: " + error.message, "error");
+                if (googleBtn) googleBtn.disabled = false;
+            }
         }
     };
 
@@ -183,8 +191,25 @@ function initAuth() {
     });
 }
 
+function showAuthStatus(message, type = "", duration = 0) {
+    const statusEl = document.getElementById('auth-status');
+    if (!statusEl) return;
+
+    statusEl.textContent = message;
+    statusEl.className = 'auth-status ' + type;
+    statusEl.classList.remove('hidden');
+
+    if (duration > 0) {
+        setTimeout(() => {
+            statusEl.classList.add('hidden');
+        }, duration);
+    }
+}
+
 function handleAuthError(error) {
     console.error("Login Error:", error);
+    showAuthStatus(`Error: ${error.message}`, "error");
+
     let msg = `Login Failed: ${error.message}`;
 
     // Check for insecure origin (Non-HTTPS / Non-Localhost)
@@ -194,6 +219,8 @@ function handleAuthError(error) {
         msg = `Unauthorized Domain: Please add '${window.location.hostname}' to your Authorized Domains in the Firebase Console (Authentication > Settings).`;
     } else if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/configuration-not-found') {
         msg = "Google Sign-In is not enabled in your Firebase Console. \n\nFix: Go to Authentication > Sign-in method > Add new provider > Google, and Enable it.";
+    } else if (error.code === 'auth/network-request-failed' || error.message.includes('cookies')) {
+        msg = "Cookie Error detected. If you are on an iPhone using Safari, please ensure 'Block All Cookies' is turned off in Settings > Safari. Also ensure you are not in Incognito/Private mode.";
     }
 
     alert(msg);

@@ -188,6 +188,30 @@
     box-shadow: 0 12px 24px -5px rgba(255, 255, 255, 0.15) !important;
 }
 
+.auth-status {
+    margin-top: 20px;
+    font-size: 0.85rem;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+.auth-status.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.auth-status.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
 .auth-footer {
     margin-top: 48px;
     width: 100%;
