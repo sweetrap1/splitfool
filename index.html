@@ -71,7 +71,13 @@
                     </div>
                 </div>
                 <div class="group-selector">
-                    <select id="active-group-select" class="group-dropdown"></select>
+                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                        <select id="active-group-select" class="group-dropdown" style="margin-bottom: 0;"></select>
+                        <button class="btn icon-btn" id="add-group-btn" title="Create New Group"
+                            style="color: var(--primary);">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
 
                     <button class="btn icon-btn" id="edit-group-btn" title="Edit Group Name">
                         <i class="fa-solid fa-pen"></i>
@@ -80,17 +86,14 @@
                         <i class="fa-solid fa-trash"></i>
                     </button>
                     <button class="btn icon-btn" id="leave-group-btn" title="Leave Trip" style="display: none;">
-                        <i class="fa-solid fa-person-walking-arrow-right"></i>
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
                     </button>
                     <button class="btn icon-btn" id="share-group-btn" title="Share Trip Code">
                         <i class="fa-solid fa-user-plus"></i>
                     </button>
-                    <button class="btn icon-btn" id="add-group-btn" title="Create New Group">
-                        <i class="fa-solid fa-plus"></i>
-                    </button>
                     <button class="btn icon-btn" id="join-group-btn" title="Join Trip via Code">
-                        <i class="fa-solid fa-right-to-bracket"></i>
-                    </button>
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </button>
                 </div>
             </div>
             <nav>

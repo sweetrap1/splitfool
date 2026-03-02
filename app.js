@@ -320,6 +320,9 @@ async function initFirebaseData() {
 
     let joinedNewGroup = false;
     if (joinCode && joinCode.length === 6) {
+        const joinCodeInput = document.getElementById('login-join-code');
+        if (joinCodeInput) joinCodeInput.value = joinCode;
+
         if (!savedGroupIds.includes(joinCode)) {
             const docRef = await db.collection('groups').doc(joinCode).get();
             if (docRef.exists) {
@@ -866,6 +869,13 @@ window.openEditPersonModal = function (id) {
     const person = activeGroup.people.find(p => p.id === id);
     if (!person) return;
 
+    // Optional constraint checking at the JavaScript level
+    const isOwner = currentUser && person.userId === currentUser.uid;
+    if (!isGroupAdmin(activeGroup) && !isOwner) {
+        alert("You do not have permission to edit this profile.");
+        return;
+    }
+
     document.getElementById('edit-person-name').value = person.name;
     document.getElementById('edit-person-venmo').value = person.venmoUsername || '';
     document.getElementById('edit-person-modal').dataset.personId = id;
@@ -896,13 +906,44 @@ function removePerson(id) {
         return;
     }
 
-    const personToRemove = activeGroup.people.find(p => p.id === id);
     if (personToRemove) {
         db.collection('groups').doc(activeGroup.id).update({
             people: firebase.firestore.FieldValue.arrayRemove(personToRemove)
         }).catch(e => console.error("Error removing person", e));
     }
 }
+
+window.claimPerson = async function (id) {
+    if (!currentUser) {
+        alert("Please log in with Google to claim a profile.");
+        return;
+    }
+    const activeGroup = getActiveGroup();
+    try {
+        await db.runTransaction(async (t) => {
+            const ref = db.collection('groups').doc(activeGroup.id);
+            const doc = await t.get(ref);
+            if (!doc.exists) return;
+
+            let groupData = doc.data();
+            if (groupData.people.some(p => p.userId === currentUser.uid)) {
+                throw new Error("You already claimed a profile in this trip.");
+            }
+
+            let pIndex = groupData.people.findIndex(p => p.id === id);
+            if (pIndex !== -1) {
+                if (groupData.people[pIndex].userId) {
+                    throw new Error("This profile is already claimed.");
+                }
+                groupData.people[pIndex].userId = currentUser.uid;
+                t.update(ref, { people: groupData.people });
+            }
+        });
+        showAuthStatus("Profile claimed successfully!", "success", 2000);
+    } catch (e) {
+        alert(e.message);
+    }
+};
 
 // Render Functions stub
 function renderPeople() {
@@ -933,24 +974,54 @@ function renderPeople() {
         return;
     }
 
+    const isGroupAdminFlag = isGroupAdmin(activeGroup);
+    const hasClaimedSomeone = activeGroup.people.some(p => currentUser && p.userId === currentUser.uid);
+
     activeGroup.people.forEach(p => {
         const safeName = escapeHTML(p.name);
         const char = safeName.charAt(0).toUpperCase();
         const safeVenmo = escapeHTML(p.venmoUsername);
         const venmoBadge = safeVenmo ? `<span style="color:#008CFF; font-size: 0.8em; margin-left: 0.5rem;"><i class="fa-brands fa-venmo"></i> ${safeVenmo}</span>` : '';
-        list.innerHTML += `
-            <div class="card person-card">
-                <div class="person-info">
-                    <div class="avatar">${char}</div>
-                    <h3>${safeName} ${venmoBadge}</h3>
-                </div>
-                <div style="display:flex; gap: 0.5rem;">
+
+        let claimBtnHtml = '';
+        let controlsHtml = '';
+        const isOwner = currentUser && p.userId === currentUser.uid;
+
+        if (currentUser && !p.userId && !hasClaimedSomeone) {
+            claimBtnHtml = `<button class="btn" style="padding: 4px 12px; font-size: 0.8rem; height: 30px; border-radius: 8px; margin-left: 0.5rem;" onclick="claimPerson('${escapeHTML(p.id)}')"><i class="fa-solid fa-hand" style="margin-right: 4px;"></i> Claim</button>`;
+        } else if (p.userId) {
+            if (isOwner) {
+                claimBtnHtml = `<span class="badge" style="background:var(--success); color:#fff; font-size:0.7rem; padding: 2px 6px; border-radius:10px; margin-left: 0.5rem;">You</span>`;
+            } else {
+                claimBtnHtml = `<span class="badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); font-size:0.7rem; padding: 2px 6px; border-radius:10px; margin-left: 0.5rem;">Claimed</span>`;
+            }
+        }
+
+        if (isGroupAdminFlag || isOwner) {
+            controlsHtml += `
                     <button class="btn icon-btn" onclick="openEditPersonModal('${escapeHTML(p.id)}')">
                         <i class="fa-solid fa-pen"></i>
-                    </button>
+                    </button>`;
+        }
+
+        if (isGroupAdminFlag) {
+            controlsHtml += `
                     <button class="btn danger" onclick="removePerson('${escapeHTML(p.id)}')">
                         <i class="fa-solid fa-trash"></i>
-                    </button>
+                    </button>`;
+        }
+
+        list.innerHTML += `
+            <div class="card person-card" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="person-info" style="display:flex; align-items:center; gap: 1rem; flex: 1;">
+                    <div class="avatar">${char}</div>
+                    <div>
+                        <h3 style="margin:0; display:flex; align-items:center; flex-wrap: wrap;">${safeName} ${claimBtnHtml}</h3>
+                        ${venmoBadge ? `<div>${venmoBadge}</div>` : ''}
+                    </div>
+                </div>
+                <div style="display:flex; gap: 0.5rem;">
+                    ${controlsHtml}
                 </div>
             </div>
         `;
@@ -1002,6 +1073,18 @@ function renderSplitParticipants() {
     const activeGroup = getActiveGroup();
     const container = document.getElementById('split-participants');
 
+    // Cache existing checkbox states and input values to prevent overwriting user progress
+    const currentStates = {};
+    const currentValues = {};
+    document.querySelectorAll('.participant-cb').forEach(cb => {
+        const id = cb.id.replace('part_', '');
+        currentStates[id] = cb.checked;
+    });
+    document.querySelectorAll('.participant-input').forEach(input => {
+        const id = input.id.replace('input_', '');
+        currentValues[id] = input.value;
+    });
+
     if (currentSplitMode === 'paid_for') {
         const payerId = document.getElementById('expense-payer').value;
         const otherPeople = activeGroup.people.filter(p => p.id !== payerId);
@@ -1022,15 +1105,18 @@ function renderSplitParticipants() {
         const safeId = escapeHTML(p.id);
         const splitUnit = currentSplitMode === 'percent' ? '%' : (currentSplitMode === 'shares' ? 'shares' : '$');
 
+        const isChecked = currentStates[safeId] !== undefined ? currentStates[safeId] : true;
+        const prevValue = currentValues[safeId] || '';
+
         return `
-        <div class="participant-card active" id="card_${safeId}" onclick="toggleParticipant('${safeId}')">
+        <div class="participant-card ${isChecked ? 'active' : ''}" id="card_${safeId}" onclick="toggleParticipant('${safeId}')">
             <div class="participant-item-left">
-                <input type="checkbox" id="part_${safeId}" class="participant-cb" value="${safeId}" checked style="display:none;" onchange="updateSplitSummary()">
+                <input type="checkbox" id="part_${safeId}" class="participant-cb" value="${safeId}" ${isChecked ? 'checked' : ''} style="display:none;" onchange="updateSplitSummary()">
                 <div class="participant-avatar">${safeName.charAt(0).toUpperCase()}</div>
                 <label for="part_${safeId}" onclick="event.preventDefault()">${safeName}</label>
             </div>
             <div class="participant-input-container" onclick="event.stopPropagation()">
-                <input type="number" id="input_${safeId}" class="participant-input" placeholder="0" step="0.01" min="0" 
+                <input type="number" id="input_${safeId}" class="participant-input" placeholder="0" step="0.01" min="0" value="${prevValue}"
                     ${currentSplitMode === 'equal' ? 'disabled' : ''} oninput="updateSplitSummary()">
                 <span class="split-unit">${splitUnit}</span>
             </div>
@@ -1291,12 +1377,18 @@ function renderExpenses() {
     sorted.forEach(e => {
         const rawPayerName = activeGroup.people.find(p => p.id === e.payerId)?.name || 'Unknown';
         const payer = escapeHTML(rawPayerName);
-        const symbol = escapeHTML(e.currency) === 'USD' ? '<i class="fa-solid fa-dollar-sign"></i>' : (escapeHTML(e.currency) === 'MXN' ? '<i class="fa-solid fa-peso-sign"></i>' : escapeHTML(e.currency));
+        const symbol = escapeHTML(e.currency);
 
-        const participantNames = escapeHTML(e.participants.map(part => {
-            const person = activeGroup.people.find(p => p.id === part.personId);
-            return person ? person.name : 'Unknown';
-        }).join(', '));
+        let participantNames;
+        if (e.participants.length === activeGroup.people.length && activeGroup.people.length > 0) {
+            participantNames = 'All';
+        } else {
+            const names = e.participants.map(part => {
+                const person = activeGroup.people.find(p => p.id === part.personId);
+                return person ? person.name : 'Unknown';
+            });
+            participantNames = escapeHTML(names.join(', ')) + ` (${e.participants.length})`;
+        }
 
         const safeDesc = escapeHTML(e.description);
         const safeId = escapeHTML(e.id);
@@ -1318,9 +1410,16 @@ function renderExpenses() {
                         </button>
                     </div>
                 </div>
-                <div class="expense-details">
-                    <span class="payer-badge">Paid by ${payer}</span>
-                    <span class="split-info">For: ${participantNames} (${safeSplit})</span>
+                <div class="expense-details" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                    <div class="payer-badge" style="color: var(--text-main);">
+                        Paid by <strong>${payer}</strong>
+                    </div>
+                    <div class="split-info" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-muted); font-size: 0.9em;">
+                        <span>For: ${participantNames}</span>
+                        <span class="split-badge" style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: capitalize; color: var(--text-main);">
+                            ${safeSplit.replace('_', ' ')}
+                        </span>
+                    </div>
                 </div>
             </div>
         `;
