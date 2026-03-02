@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SplitFool - Modern Expense Tracker</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.0.1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -13,11 +13,60 @@
 </head>
 
 <body>
-    <div class="app-container">
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo large">
+                    <i class="fa-solid fa-coins"></i> SplitFool
+                </div>
+                <p class="auth-subtitle">Fair splitting. Modern tracking. Together.</p>
+            </div>
+
+            <div class="auth-content">
+                <div class="auth-section">
+                    <label class="section-label">Join a Trip</label>
+                    <div class="join-group-row">
+                        <input type="text" id="login-join-code" placeholder="ENTER 6-CHAR CODE" maxlength="6"
+                            style="text-transform: uppercase;">
+                        <button class="btn primary" id="login-join-btn">Join</button>
+                    </div>
+                </div>
+
+                <div class="auth-divider">
+                    <span class="divider-text">OR</span>
+                </div>
+
+                <div class="auth-section">
+                    <label class="section-label">Your Dashboard</label>
+                    <button class="btn primary google-btn" id="google-login-btn">
+                        <i class="fa-brands fa-google"></i> Sign in with Google
+                    </button>
+                </div>
+            </div>
+
+            <footer class="auth-footer">
+                <p>Track expenses across currencies, simplified for you and your friends.</p>
+            </footer>
+        </div>
+    </div>
+
+    <div class="app-container hidden">
         <header>
             <div class="header-top">
                 <div class="logo">
                     <i class="fa-solid fa-coins"></i> SplitFool
+                </div>
+                <div class="user-profile" id="user-profile">
+                    <button class="btn secondary sm" id="login-btn">
+                        <i class="fa-brands fa-google"></i> Login
+                    </button>
+                    <div id="user-info" class="user-info hidden">
+                        <img id="user-avatar" src="" alt="Avatar">
+                        <span id="user-name"></span>
+                        <button class="btn icon-btn sm" id="logout-btn" title="Logout">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="group-selector">
                     <select id="active-group-select" class="group-dropdown"></select>
@@ -54,6 +103,7 @@
                     <h2>Group Members</h2>
                     <button class="btn primary" id="add-person-btn"><i class="fa-solid fa-plus"></i> Add Person</button>
                 </div>
+                <div id="group-admin-info" class="group-admin-info"></div>
                 <div class="people-grid" id="people-list">
                     <!-- Dynamic rendering -->
                 </div>
@@ -342,9 +392,12 @@
 
     <!-- Firebase v8 Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
-    <script src="app.js"></script>
+    </div> <!-- end .app-container -->
+
+    <script src="app.js?v=1.0.1"></script>
 </body>
 
 </html>

@@ -9,6 +9,8 @@ const firebaseConfig = {
     measurementId: "G-C7HF3N3X7N"
 };
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
 const db = firebase.firestore();
 
 // State Management
@@ -18,8 +20,9 @@ let state = {
     groups: []
 };
 let unsubscribeListeners = {};
+let currentUser = null;
 
-// User Identification for Admin permissions
+// Fallback User ID for offline/unauthenticated users
 let myUserId = localStorage.getItem('splitfool_user_id');
 if (!myUserId) {
     myUserId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
@@ -27,17 +30,70 @@ if (!myUserId) {
 }
 
 function getActiveGroup() {
-    return state.groups.find(g => g.id === state.activeGroupId) || state.groups[0];
+    const group = state.groups.find(g => g.id === state.activeGroupId) || state.groups[0];
+    return group || { id: 'loading', name: 'Loading...', people: [], expenses: [], creatorId: null };
+}
+
+function isGroupAdmin(group) {
+    if (!group) return false;
+    // If no creatorId at all (legacy), anyone can admin
+    if (!group.creatorId) return true;
+    // If logged in, check UID
+    if (currentUser && group.creatorId === currentUser.uid) return true;
+    // If trip was created anonymously on this browser, allow admin
+    const localId = localStorage.getItem('splitfool_user_id');
+    if (group.creatorId === localId) return true;
+    return false;
 }
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
+    // Auth state listener
+    auth.onAuthStateChanged(user => {
+        currentUser = user;
+        const loginBtn = document.getElementById('login-btn');
+        const userInfo = document.getElementById('user-info');
+        const authOverlay = document.getElementById('auth-overlay');
+        const appContainer = document.querySelector('.app-container');
+
+        if (user) {
+            myUserId = user.uid;
+            if (loginBtn) loginBtn.classList.add('hidden');
+            if (userInfo) {
+                userInfo.classList.remove('hidden');
+                document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/32';
+                document.getElementById('user-name').textContent = user.displayName;
+            }
+            // Gate UI
+            if (authOverlay) authOverlay.classList.add('hidden');
+            if (appContainer) appContainer.classList.remove('hidden');
+        } else {
+            myUserId = localStorage.getItem('splitfool_user_id');
+            if (loginBtn) loginBtn.classList.remove('hidden');
+            if (userInfo) userInfo.classList.add('hidden');
+
+            // Gate UI - Only show app if we have saved groups (optional preference)
+            // But user asked for FORCE login, so let's stick to showing overlay if no user
+            if (authOverlay) authOverlay.classList.remove('hidden');
+            if (appContainer) appContainer.classList.add('hidden');
+        }
+        renderAll();
+    });
+
+    // Handle Redirect Result for Mobile
+    try {
+        const result = await auth.getRedirectResult();
+        if (result && result.user) {
+            console.log("Logged in via redirect:", result.user.displayName);
+        }
+    } catch (error) {
+        console.error("Redirect Login Error:", error);
+    }
+
     try {
         await initFirebaseData();
     } catch (error) {
         console.error("Firebase Initialization Error:", error);
-        alert("Firebase Connection Error: The database was not found or permissions are blocked. Please make sure you created the 'Firestore Database' in your Firebase console and set it to 'Test Mode'.");
-
         // Fallback so the UI doesn't crash completely
         if (state.groups.length === 0) {
             state.groups = [{ id: 'offline_error', name: 'Offline Error Trip', people: [], expenses: [] }];
@@ -45,11 +101,110 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    initGroups();
-    initNavigation();
-    initModals();
+    console.log("DOM Content Loaded. Initializing...");
+
+    try {
+        initGroups();
+        initNavigation();
+        initModals();
+        initAuth();
+        console.log("Initialization complete.");
+    } catch (err) {
+        console.error("Critical initialization error:", err);
+    }
+
     renderAll();
 });
+
+function initAuth() {
+    const loginHandler = () => {
+        console.log("Login button clicked. Attempting Google Auth...");
+        // Detect if we're on mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            console.log("Mobile detected. Using Redirect.");
+            auth.signInWithRedirect(provider).catch(handleAuthError);
+        } else {
+            console.log("Desktop detected. Using Popup.");
+            auth.signInWithPopup(provider).catch(error => {
+                // If popup is blocked, fallback to redirect
+                if (error.code === 'auth/popup-blocked') {
+                    console.log("Popup blocked. Falling back to Redirect.");
+                    auth.signInWithRedirect(provider).catch(handleAuthError);
+                } else {
+                    handleAuthError(error);
+                }
+            });
+        }
+    };
+
+    document.getElementById('login-btn')?.addEventListener('click', loginHandler);
+    document.getElementById('google-login-btn')?.addEventListener('click', loginHandler);
+
+    const joinHandler = async () => {
+        const codeInput = document.getElementById('login-join-code');
+        const code = codeInput.value.trim().toUpperCase();
+        if (code && code.length === 6) {
+            if (savedGroupIds.includes(code)) {
+                // Just hide overlay and show app
+                document.getElementById('auth-overlay')?.classList.add('hidden');
+                document.querySelector('.app-container')?.classList.remove('hidden');
+                state.activeGroupId = code;
+                renderAll();
+                return;
+            }
+
+            const docRef = await db.collection('groups').doc(code).get();
+            if (docRef.exists) {
+                savedGroupIds.push(code);
+                saveSavedGroupIds();
+                state.activeGroupId = code;
+                await subscribeToGroup(code);
+                // Hide overlay
+                document.getElementById('auth-overlay')?.classList.add('hidden');
+                document.querySelector('.app-container')?.classList.remove('hidden');
+                renderAll();
+            } else {
+                alert("Trip code not found.");
+            }
+        } else {
+            alert("Please enter a valid 6-character code.");
+        }
+    };
+
+    document.getElementById('login-join-btn')?.addEventListener('click', joinHandler);
+    document.getElementById('login-join-code')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') joinHandler();
+    });
+
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+        auth.signOut();
+    });
+}
+
+function handleAuthError(error) {
+    console.error("Login Error:", error);
+    let msg = `Login Failed: ${error.message}`;
+
+    // Check for insecure origin (Non-HTTPS / Non-Localhost)
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        msg = "Google Login requires a secure connection (HTTPS) when using an IP address. \n\nSuggested Fix: \n1. Use 'localhost' on your computer.\n2. Or deploy to Firebase Hosting (which provides HTTPS).\n3. Or use a tunnel like ngrok.";
+    } else if (error.code === 'auth/unauthorized-domain') {
+        msg = `Unauthorized Domain: Please add '${window.location.hostname}' to your Authorized Domains in the Firebase Console (Authentication > Settings).`;
+    } else if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/configuration-not-found') {
+        msg = "Google Sign-In is not enabled in your Firebase Console. \n\nFix: Go to Authentication > Sign-in method > Add new provider > Google, and Enable it.";
+    }
+
+    alert(msg);
+}
+
+window.resetLocalCache = function () {
+    if (confirm("This will clear your local trip list and reset the app. Your trips in Firebase will NOT be deleted. Continue?")) {
+        localStorage.clear();
+        window.location.reload();
+    }
+};
 
 async function initFirebaseData() {
     // Migrate old local data if it exists
@@ -133,7 +288,10 @@ async function createNewGroup(name) {
         name: name,
         people: [],
         expenses: [],
-        creatorId: myUserId
+        creatorId: myUserId,
+        creatorName: currentUser ? currentUser.displayName : 'Anonymous',
+        creatorEmail: currentUser ? currentUser.email : null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     await db.collection('groups').doc(roomCode).set(newGroup);
     savedGroupIds.push(roomCode);
@@ -146,28 +304,35 @@ function subscribeToGroup(groupId) {
     return new Promise((resolve) => {
         if (unsubscribeListeners[groupId]) return resolve();
 
-        const unsubscribe = db.collection('groups').doc(groupId).onSnapshot(doc => {
-            if (doc.exists) {
-                const groupData = doc.data();
-                const existingIndex = state.groups.findIndex(g => g.id === groupId);
-                if (existingIndex >= 0) {
-                    state.groups[existingIndex] = groupData;
+        const unsubscribe = db.collection('groups').doc(groupId).onSnapshot(
+            doc => {
+                if (doc.exists) {
+                    const groupData = doc.data();
+                    const existingIndex = state.groups.findIndex(g => g.id === groupId);
+                    if (existingIndex >= 0) {
+                        state.groups[existingIndex] = groupData;
+                    } else {
+                        state.groups.push(groupData);
+                    }
+                    renderAll();
                 } else {
-                    state.groups.push(groupData);
+                    // Document deleted
+                    state.groups = state.groups.filter(g => g.id !== groupId);
+                    if (state.activeGroupId === groupId) {
+                        state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
+                    }
+                    unsubscribe();
+                    delete unsubscribeListeners[groupId];
+                    renderAll();
                 }
-                renderAll();
-            } else {
-                // Document deleted
-                state.groups = state.groups.filter(g => g.id !== groupId);
-                if (state.activeGroupId === groupId) {
-                    state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
-                }
-                unsubscribe();
-                delete unsubscribeListeners[groupId];
-                renderAll();
+                resolve();
+            },
+            error => {
+                console.error(`Error subscribing to group ${groupId}:`, error);
+                // Important: still resolve so initialization can continue!
+                resolve();
             }
-            resolve();
-        });
+        );
         unsubscribeListeners[groupId] = unsubscribe;
     });
 }
@@ -182,7 +347,18 @@ function renderAll() {
 
 function saveState() {
     const activeGroup = getActiveGroup();
-    if (activeGroup) {
+    if (activeGroup && activeGroup.id && activeGroup.id !== 'loading' && activeGroup.id !== 'offline_error') {
+        // Claim logic: if no creatorId, the person saving it becomes the creator
+        if (!activeGroup.creatorId) {
+            if (currentUser) {
+                activeGroup.creatorId = currentUser.uid;
+                activeGroup.creatorName = currentUser.displayName;
+                activeGroup.creatorEmail = currentUser.email;
+            } else {
+                activeGroup.creatorId = myUserId;
+                activeGroup.creatorName = 'Anonymous';
+            }
+        }
         db.collection('groups').doc(activeGroup.id).set(activeGroup);
     }
 }
@@ -295,7 +471,7 @@ function initGroups() {
             const activeGroup = getActiveGroup();
 
             // Permission check
-            if (activeGroup.creatorId && activeGroup.creatorId !== myUserId) {
+            if (!isGroupAdmin(activeGroup)) {
                 alert("Only the group creator can rename this trip.");
                 return;
             }
@@ -323,7 +499,7 @@ function initGroups() {
             const activeGroup = getActiveGroup();
 
             // Permission check
-            if (activeGroup.creatorId && activeGroup.creatorId !== myUserId) {
+            if (!isGroupAdmin(activeGroup)) {
                 alert("Only the group creator can delete this trip.");
                 return;
             }
@@ -434,7 +610,7 @@ function renderGroupSelector() {
 
     // Toggle Admin Buttons visibility
     const activeGroup = getActiveGroup();
-    const isAdmin = !activeGroup.creatorId || activeGroup.creatorId === myUserId;
+    const isAdmin = isGroupAdmin(activeGroup);
 
     const editBtn = document.getElementById('edit-group-btn');
     const deleteBtn = document.getElementById('delete-group-btn');
@@ -569,7 +745,25 @@ function removePerson(id) {
 function renderPeople() {
     const activeGroup = getActiveGroup();
     const list = document.getElementById('people-list');
+    const adminInfo = document.getElementById('group-admin-info');
     list.innerHTML = '';
+
+    // Render Admin Info
+    if (adminInfo) {
+        if (activeGroup.creatorId) {
+            const isAdmin = isGroupAdmin(activeGroup);
+            const adminName = activeGroup.creatorName || 'Anonymous';
+            adminInfo.innerHTML = `
+                <div class="admin-badge ${isAdmin ? 'is-self' : ''}">
+                    <i class="fa-solid fa-shield-halved"></i> 
+                    Admin: <strong>${isAdmin ? 'You' : adminName}</strong>
+                </div>
+            `;
+            adminInfo.classList.remove('hidden');
+        } else {
+            adminInfo.classList.add('hidden');
+        }
+    }
 
     if (activeGroup.people.length === 0) {
         list.innerHTML = '<p class="subtitle">No people added yet. Add some friends to get started!</p>';
