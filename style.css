@@ -1,5 +1,6 @@
 :root {
     --primary: #6366f1;
+    --primary-rgb: 99, 102, 241;
     --primary-hover: #4f46e5;
     --secondary: #ec4899;
     --bg-color: #0f172a;
@@ -60,6 +61,68 @@ header {
     flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1rem;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.25rem 0.5rem;
+    padding-right: 0.25rem;
+    border-radius: 30px;
+    border: 1px solid var(--border-color);
+}
+
+.user-info img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--primary);
+}
+
+.user-info span {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.group-admin-info {
+    margin: 1rem 0;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.admin-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.admin-badge i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.admin-badge.is-self {
+    border-color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.1);
+    color: white;
 }
 
 .group-selector {

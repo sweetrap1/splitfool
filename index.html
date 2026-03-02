@@ -19,6 +19,18 @@
                 <div class="logo">
                     <i class="fa-solid fa-coins"></i> SplitFool
                 </div>
+                <div class="user-profile" id="user-profile">
+                    <button class="btn secondary sm" id="login-btn">
+                        <i class="fa-brands fa-google"></i> Login
+                    </button>
+                    <div id="user-info" class="user-info hidden">
+                        <img id="user-avatar" src="" alt="Avatar">
+                        <span id="user-name"></span>
+                        <button class="btn icon-btn sm" id="logout-btn" title="Logout">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="group-selector">
                     <select id="active-group-select" class="group-dropdown"></select>
 
@@ -54,6 +66,7 @@
                     <h2>Group Members</h2>
                     <button class="btn primary" id="add-person-btn"><i class="fa-solid fa-plus"></i> Add Person</button>
                 </div>
+                <div id="group-admin-info" class="group-admin-info"></div>
                 <div class="people-grid" id="people-list">
                     <!-- Dynamic rendering -->
                 </div>
@@ -342,7 +355,15 @@
 
     <!-- Firebase v8 Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <footer>
+        <button class="btn sm secondary" onclick="resetLocalCache()"
+            style="opacity: 0.5; margin: 2rem auto; display: block;">
+            <i class="fa-solid fa-trash-can"></i> Clear Local Cache (Emergency Reset)
+        </button>
+    </footer>
 
     <script src="app.js"></script>
 </body>
