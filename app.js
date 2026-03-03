@@ -1044,29 +1044,147 @@ function updatePayerDropdown() {
     } else if (activeGroup.people.length > 0) {
         payerSelect.value = activeGroup.people[0].id;
     }
+
+    try {
+        if (typeof renderMultiplePayers === 'function') {
+            renderMultiplePayers();
+        }
+    } catch (e) {
+        console.error("Failed to render multiple payers:", e);
+    }
 }
 
+let currentPayerMode = 'single'; // 'single' or 'multiple'
 let currentSplitMode = 'equal'; // equal, exact, percent
 
-function resetExpenseForm() {
+window.togglePayerMode = function (mode) {
+    try {
+        currentPayerMode = mode;
+        const singleBtn = document.getElementById('single-payer-btn');
+        const multiBtn = document.getElementById('multi-payer-btn');
+
+        if (singleBtn) singleBtn.classList.toggle('active', mode === 'single');
+        if (multiBtn) multiBtn.classList.toggle('active', mode === 'multiple');
+
+        const expPayer = document.getElementById('expense-payer');
+        const mpList = document.getElementById('multiple-payers-list');
+        const mpSumm = document.getElementById('multiple-payers-summary');
+
+        if (mode === 'single') {
+            if (expPayer) expPayer.classList.remove('hidden');
+            if (mpList) mpList.classList.add('hidden');
+            if (mpSumm) mpSumm.classList.add('hidden');
+        } else {
+            if (expPayer) expPayer.classList.add('hidden');
+            if (mpList) mpList.classList.remove('hidden');
+            if (mpSumm) mpSumm.classList.remove('hidden');
+            renderMultiplePayers();
+        }
+        updateSplitSummary();
+    } catch (e) {
+        console.error("togglePayerMode failed", e);
+    }
+};
+
+window.updateMultiplePayersSummary = function () {
+    try {
+        const amtInput = document.getElementById('expense-amount');
+        if (!amtInput) return;
+        const expectedTotal = parseFloat(amtInput.value) || 0;
+        let actualTotal = 0;
+
+        document.querySelectorAll('.multi-payer-input').forEach(input => {
+            actualTotal += parseFloat(input.value) || 0;
+        });
+
+        const totalAmtDisp = document.getElementById('payers-total-amount');
+        if (totalAmtDisp) totalAmtDisp.textContent = actualTotal.toFixed(2);
+
+        const expAmtDisp = document.getElementById('payers-expected-total');
+        if (expAmtDisp) expAmtDisp.textContent = expectedTotal.toFixed(2);
+
+        const summaryEl = document.getElementById('multiple-payers-summary');
+        if (summaryEl) {
+            if (Math.abs(actualTotal - expectedTotal) > 0.05 && expectedTotal > 0) {
+                summaryEl.classList.add('error');
+            } else {
+                summaryEl.classList.remove('error');
+            }
+        }
+    } catch (e) {
+        console.error("updateMultiplePayersSummary failed", e);
+    }
+};
+
+function renderMultiplePayers() {
     const activeGroup = getActiveGroup();
-    document.getElementById('expense-id').value = '';
-    document.getElementById('expense-modal-title').textContent = 'Add Expense';
-    document.getElementById('expense-desc').value = '';
-    document.getElementById('expense-amount').value = '';
-    document.getElementById('expense-currency').value = 'USD';
+    const container = document.getElementById('multiple-payers-list');
+    if (!container) return;
 
-    // Populate payers with XSS protection
-    updatePayerDropdown();
+    if (!activeGroup || !activeGroup.people) return;
 
-    // Populate participants
-    renderSplitParticipants();
+    const currentValues = {};
+    try {
+        document.querySelectorAll('.multi-payer-input').forEach(input => {
+            if (input && input.id) {
+                const id = input.id.replace('mp_', '');
+                currentValues[id] = input.value;
+            }
+        });
+    } catch (e) {
+        console.error("Failed to get current values", e);
+    }
 
-    // Reset tabs
-    document.querySelectorAll('.split-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector('.split-tab[data-split="equal"]').classList.add('active');
-    currentSplitMode = 'equal';
-    updateSplitSummary();
+    container.innerHTML = activeGroup.people.map(p => {
+        const safeName = escapeHTML(p.name);
+        const safeId = escapeHTML(p.id);
+        const prevValue = currentValues[safeId] || '';
+
+        return `
+        <div class="participant-card active" style="margin-bottom: 8px;">
+            <div class="participant-item-left">
+                <div class="participant-avatar">${safeName.charAt(0).toUpperCase()}</div>
+                <label>${safeName}</label>
+            </div>
+            <div class="participant-input-container">
+                <input type="number" id="mp_${safeId}" class="multi-payer-input participant-input" placeholder="0" step="0.01" min="0" value="${prevValue}" oninput="updateMultiplePayersSummary()">
+                <span class="split-unit">$</span>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    updateMultiplePayersSummary();
+}
+
+function resetExpenseForm() {
+    try {
+        const activeGroup = getActiveGroup();
+        document.getElementById('expense-id').value = '';
+        document.getElementById('expense-modal-title').textContent = 'Add Expense';
+        document.getElementById('expense-desc').value = '';
+        document.getElementById('expense-amount').value = '';
+        document.getElementById('expense-currency').value = 'USD';
+
+        togglePayerMode('single');
+
+        // Populate payers with XSS protection
+        updatePayerDropdown();
+
+        // Ensure we start fresh, caching won't inherit an edited expense's state
+        document.getElementById('split-participants').innerHTML = '';
+
+        // Populate participants
+        renderSplitParticipants();
+
+        // Reset tabs
+        document.querySelectorAll('.split-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.split-tab[data-split="equal"]').classList.add('active');
+        currentSplitMode = 'equal';
+        updateSplitSummary();
+    } catch (e) {
+        console.error("Error resetting expense form:", e);
+    }
 }
 
 function renderSplitParticipants() {
@@ -1235,6 +1353,29 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
         return;
     }
 
+    let payers = [];
+    if (currentPayerMode === 'single') {
+        const payerId = document.getElementById('expense-payer').value;
+        payers.push({ personId: payerId, amount: amount });
+    } else {
+        const summaryEl = document.getElementById('multiple-payers-summary');
+        if (summaryEl.classList.contains('error')) {
+            alert('The multiple payers total does not match the expense amount.');
+            return;
+        }
+        document.querySelectorAll('.multi-payer-input').forEach(input => {
+            const val = parseFloat(input.value) || 0;
+            if (val > 0) {
+                const personId = input.id.replace('mp_', '');
+                payers.push({ personId, amount: val });
+            }
+        });
+        if (payers.length === 0) {
+            alert('Please specify who paid for this expense.');
+            return;
+        }
+    }
+
     const participants = [];
 
     if (currentSplitMode === 'paid_for') {
@@ -1272,7 +1413,8 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
         description: desc,
         amount,
         currency,
-        payerId,
+        payerId: payers[0].personId, // fallback for legacy clients
+        payers: payers,
         splitType: currentSplitMode,
         participants
     };
@@ -1320,7 +1462,19 @@ window.editExpense = function (id) {
     document.getElementById('expense-desc').value = expense.description;
     document.getElementById('expense-amount').value = expense.amount;
     document.getElementById('expense-currency').value = expense.currency;
-    document.getElementById('expense-payer').value = expense.payerId;
+
+    // Restore payers
+    if (expense.payers && expense.payers.length > 1) {
+        togglePayerMode('multiple');
+        expense.payers.forEach(p => {
+            const input = document.getElementById('mp_' + p.personId);
+            if (input) input.value = p.amount;
+        });
+        updateMultiplePayersSummary();
+    } else {
+        togglePayerMode('single');
+        document.getElementById('expense-payer').value = expense.payers ? expense.payers[0].personId : expense.payerId;
+    }
 
     // Set split mode
     currentSplitMode = expense.splitType;
@@ -1328,7 +1482,15 @@ window.editExpense = function (id) {
         t.classList.toggle('active', t.getAttribute('data-split') === currentSplitMode);
     });
 
+    // Clear existing DOM so renderSplitParticipants doesn't incorrectly cache previous state
+    document.getElementById('split-participants').innerHTML = '';
+
     renderSplitParticipants();
+
+    // Force clear all defaults since renderSplitParticipants assumes 'true' for new renders
+    document.querySelectorAll('.participant-cb').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.participant-card').forEach(card => card.classList.remove('active'));
+    document.querySelectorAll('.participant-input').forEach(input => input.value = '');
 
     // Fill participant values
     expense.participants.forEach(p => {
@@ -1366,6 +1528,12 @@ function renderExpenses() {
     const list = document.getElementById('expense-list');
     list.innerHTML = '';
 
+    const countDisplay = document.getElementById('expense-count-display');
+    if (countDisplay) {
+        const count = activeGroup.expenses.length;
+        countDisplay.textContent = count > 0 ? `(${count})` : '';
+    }
+
     if (activeGroup.expenses.length === 0) {
         list.innerHTML = '<p class="subtitle">No expenses added yet.</p>';
         return;
@@ -1375,8 +1543,18 @@ function renderExpenses() {
     const sorted = [...activeGroup.expenses].sort((a, b) => b.id.localeCompare(a.id));
 
     sorted.forEach(e => {
-        const rawPayerName = activeGroup.people.find(p => p.id === e.payerId)?.name || 'Unknown';
-        const payer = escapeHTML(rawPayerName);
+        let payerText = '';
+        if (e.payers && e.payers.length > 1) {
+            const payerNames = e.payers.map(p => {
+                const person = activeGroup.people.find(person => person.id === p.personId);
+                return person ? person.name : 'Unknown';
+            });
+            payerText = escapeHTML(payerNames.join(', '));
+        } else {
+            const rawPayerName = activeGroup.people.find(p => p.id === e.payerId)?.name || 'Unknown';
+            payerText = escapeHTML(rawPayerName);
+        }
+
         const symbol = escapeHTML(e.currency);
 
         let participantNames;
@@ -1387,7 +1565,7 @@ function renderExpenses() {
                 const person = activeGroup.people.find(p => p.id === part.personId);
                 return person ? person.name : 'Unknown';
             });
-            participantNames = escapeHTML(names.join(', ')) + ` (${e.participants.length})`;
+            participantNames = escapeHTML(names.join(', ')) + ` <span style="color: var(--primary); font-weight: bold;">(${e.participants.length})</span>`;
         }
 
         const safeDesc = escapeHTML(e.description);
@@ -1412,7 +1590,7 @@ function renderExpenses() {
                 </div>
                 <div class="expense-details" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
                     <div class="payer-badge" style="color: var(--text-main);">
-                        Paid by <strong>${payer}</strong>
+                        Paid by <strong>${payerText}</strong>
                     </div>
                     <div class="split-info" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-muted); font-size: 0.9em;">
                         <span>For: ${participantNames}</span>
@@ -1441,7 +1619,14 @@ function calculateBalances() {
         const cur = e.currency;
 
         // Ensure currency exists for payer
-        if (balances[e.payerId]) {
+        if (e.payers && e.payers.length > 0) {
+            e.payers.forEach(payer => {
+                if (balances[payer.personId]) {
+                    if (!balances[payer.personId][cur]) balances[payer.personId][cur] = 0;
+                    balances[payer.personId][cur] += payer.amount;
+                }
+            });
+        } else if (balances[e.payerId]) { // Fallback for old expenses
             if (!balances[e.payerId][cur]) balances[e.payerId][cur] = 0;
             balances[e.payerId][cur] += amount;
         }
@@ -1915,4 +2100,60 @@ function renderMemberBreakdown(balances, targetCurrency, manualRate) {
 // Call fetch on load
 fetchExchangeRate();
 
-// End of file cleanup (removed duplicate resetExpenseForm)
+// --- PWA Installation Logic ---
+let deferredPrompt;
+const installBtn = document.getElementById('install-pwa-btn');
+const installLoginBtn = document.getElementById('install-pwa-login-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+
+    // Show the install buttons
+    if (installBtn) installBtn.style.display = 'inline-flex';
+    if (installLoginBtn) installLoginBtn.style.display = 'inline-flex';
+
+    console.log("PWA install prompt is ready.");
+});
+
+async function handleInstallPrompt() {
+    if (deferredPrompt) {
+        // Show the install prompt
+        deferredPrompt.prompt();
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        // We've used the prompt, and can't use it again, throw it away
+        deferredPrompt = null;
+        // Hide the buttons
+        if (installBtn) installBtn.style.display = 'none';
+        if (installLoginBtn) installLoginBtn.style.display = 'none';
+    } else {
+        // Explicit iOS fallback instruction
+        const isIos = () => {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            return /iphone|ipad|ipod/.test(userAgent);
+        };
+        const isStandalone = ('standalone' in window.navigator) && (window.navigator.standalone);
+
+        if (isIos() && !isStandalone) {
+            alert("To install on iOS: Tap the 'Share' icon at the bottom of Safari, then select 'Add to Home Screen'.");
+        }
+    }
+}
+
+if (installBtn) installBtn.addEventListener('click', handleInstallPrompt);
+if (installLoginBtn) installLoginBtn.addEventListener('click', handleInstallPrompt);
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+        });
+    });
+}

@@ -10,14 +10,22 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- PWA Installation -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <meta name="theme-color" content="#00f0ff">
 </head>
 
 <body>
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-card">
             <div class="auth-header">
-                <div class="logo large">
-                    <i class="fa-solid fa-coins"></i> SplitFool
+                <div class="logo large" style="flex-direction: column; gap: 8px;">
+                    <img src="icons/icon-192x192.png" alt="SplitFool Logo"
+                        style="width: 80px; height: 80px; border-radius: 20px;">
+                    SplitFool
                 </div>
                 <p class="auth-subtitle">Fair splitting. Modern tracking. Together.</p>
             </div>
@@ -41,6 +49,10 @@
                     <button class="btn primary google-btn" id="google-login-btn">
                         <i class="fa-brands fa-google"></i> Sign in with Google
                     </button>
+                    <button class="btn secondary pwa-login-btn" id="install-pwa-login-btn"
+                        style="display: none; margin-top: 1rem; width: 100%;">
+                        <i class="fa-solid fa-download"></i> Install App to Device
+                    </button>
                 </div>
             </div>
 
@@ -56,7 +68,9 @@
         <header>
             <div class="header-top">
                 <div class="logo">
-                    <i class="fa-solid fa-coins"></i> SplitFool
+                    <img src="icons/icon-192x192.png" alt="Logo"
+                        style="width: 24px; height: 24px; border-radius: 6px; margin-right: 8px;">
+                    SplitFool
                 </div>
                 <div class="user-profile" id="user-profile">
                     <button class="btn secondary sm" id="login-btn">
@@ -92,8 +106,12 @@
                         <i class="fa-solid fa-user-plus"></i>
                     </button>
                     <button class="btn icon-btn" id="join-group-btn" title="Join Trip via Code">
-                            <i class="fa-solid fa-right-to-bracket"></i>
-                        </button>
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                    </button>
+                    <button class="btn icon-btn" id="install-pwa-btn" title="Install App"
+                        style="display: none; color: var(--primary);">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
                 </div>
             </div>
             <nav>
@@ -120,7 +138,9 @@
             <!-- Expenses Tab -->
             <section id="expenses" class="tab-content">
                 <div class="header-action">
-                    <h2>Trip Expenses</h2>
+                    <h2>Trip Expenses <span id="expense-count-display"
+                            style="font-size: 1rem; font-weight: 400; color: var(--text-muted); margin-left: 8px;"></span>
+                    </h2>
                     <button class="btn primary" id="add-expense-btn"><i class="fa-solid fa-plus"></i> Add
                         Expense</button>
                 </div>
@@ -261,11 +281,33 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="expense-payer">Paid By</label>
+                <div class="form-group"
+                    style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <label style="margin: 0;">Who Paid?</label>
+                        <div class="split-tabs" style="margin: 0; transform: scale(0.9); transform-origin: right;">
+                            <button id="single-payer-btn" class="split-tab active" onclick="togglePayerMode('single')"
+                                type="button">Single</button>
+                            <button id="multi-payer-btn" class="split-tab" onclick="togglePayerMode('multiple')"
+                                type="button">Multiple</button>
+                        </div>
+                    </div>
+
+                    <!-- Single Payer Dropdown -->
                     <select id="expense-payer">
                         <!-- Dynamic -->
                     </select>
+
+                    <!-- Multiple Payers List -->
+                    <div id="multiple-payers-list" class="hidden" style="margin-top: 1rem;">
+                        <!-- Dynamic rows of inputs will be rendered here -->
+                    </div>
+
+                    <div id="multiple-payers-summary" class="split-summary hidden" style="margin-top: 1rem;">
+                        Total Paid: <span id="payers-total-amount">0.00</span> / <span
+                            id="payers-expected-total">0.00</span>
+                    </div>
                 </div>
 
                 <div class="split-section">
