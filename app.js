@@ -70,6 +70,15 @@ function escapeHTML(str) {
 
 // Initialization
 document.addEventListener('DOMContentLoaded', async () => {
+    // Process URL Invite Links (?join=CODE) immediately before Auth
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinCode = urlParams.get('join')?.toUpperCase();
+
+    if (joinCode && joinCode.length >= 6 && joinCode.length <= 8) {
+        localStorage.setItem('splitfool_pending_invite', joinCode);
+        // Do NOT clean the URL here, wait until handlePendingInvite finishes, otherwise redirect logins will lose it!
+    }
+
     // Auth state listener
     auth.onAuthStateChanged(user => {
         currentUser = user;
@@ -94,6 +103,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Sync groups across devices
             syncUserGroups(user.uid);
+
+            // Check for pending invite
+            handlePendingInvite(user);
         } else {
             console.log("Auth state change: No user");
             syncUserGroups(null); // Stop listener
@@ -178,7 +190,7 @@ function initAuth() {
     const joinHandler = async () => {
         const codeInput = document.getElementById('login-join-code');
         const code = codeInput.value.trim().toUpperCase();
-        if (code && code.length === 6) {
+        if (code && code.length >= 6 && code.length <= 8) {
             if (savedGroupIds.includes(code)) {
                 // Just hide overlay and show app
                 document.getElementById('auth-overlay')?.classList.add('hidden');
@@ -202,7 +214,7 @@ function initAuth() {
                 alert("Trip code not found.");
             }
         } else {
-            alert("Please enter a valid 6-character code.");
+            alert("Please enter a valid 6-8 character code.");
         }
     };
 
@@ -314,35 +326,6 @@ async function initFirebaseData() {
         }
     }
 
-    // Process URL Invite Links (?join=CODE)
-    const urlParams = new URLSearchParams(window.location.search);
-    const joinCode = urlParams.get('join')?.toUpperCase();
-
-    let joinedNewGroup = false;
-    if (joinCode && joinCode.length === 6) {
-        const joinCodeInput = document.getElementById('login-join-code');
-        if (joinCodeInput) joinCodeInput.value = joinCode;
-
-        if (!savedGroupIds.includes(joinCode)) {
-            const docRef = await db.collection('groups').doc(joinCode).get();
-            if (docRef.exists) {
-                savedGroupIds.push(joinCode);
-                saveSavedGroupIds();
-                state.activeGroupId = joinCode;
-                joinedNewGroup = true;
-                // Clean the URL so a refresh doesn't trigger it again
-                window.history.replaceState({}, document.title, window.location.pathname);
-            } else {
-                alert(`Invite link invalid: Trip '${joinCode}' was not found.`);
-            }
-        } else {
-            // Already in trip, just switch to it
-            state.activeGroupId = joinCode;
-            joinedNewGroup = true;
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-    }
-
     // No default group creation. We require the user to explicitly create or join.
 
     const promises = savedGroupIds.map(id => subscribeToGroup(id));
@@ -350,9 +333,181 @@ async function initFirebaseData() {
 
     // Ensure active group is valid ONLY if we didn't just explicitly join/select one. 
     // Wait for the snapshot to actually populate `state.groups` before defaulting.
-    if (!joinedNewGroup && (!state.activeGroupId || !state.groups.find(g => g.id === state.activeGroupId))) {
+    if (!state.activeGroupId || !state.groups.find(g => g.id === state.activeGroupId)) {
         state.activeGroupId = state.groups.length > 0 ? state.groups[0].id : null;
     }
+}
+
+async function handlePendingInvite(user) {
+    const pendingCode = localStorage.getItem('splitfool_pending_invite');
+    if (!pendingCode || !user) return;
+
+    // Immediately clear so we don't loop
+    localStorage.removeItem('splitfool_pending_invite');
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    try {
+        const docRef = await db.collection('groups').doc(pendingCode).get();
+        if (!docRef.exists) {
+            alert(`Invite link invalid: Trip '${pendingCode}' was not found.`);
+            return;
+        }
+
+        const groupData = docRef.data();
+
+        // 1. If user already claimed someone in this group, just join it silently
+        const alreadyClaimed = groupData.people.some(p => p.userId === user.uid);
+        if (alreadyClaimed) {
+            await finalizeJoinGroup(pendingCode);
+            return;
+        }
+
+        // 2. Are there unclaimed people?
+        const unclaimedPeople = groupData.people.filter(p => !p.userId);
+        if (unclaimedPeople.length > 0) {
+            showClaimModal(pendingCode, groupData, user, unclaimedPeople);
+        } else {
+            showWelcomeJoinModal(pendingCode, groupData, user);
+        }
+    } catch (e) {
+        console.error("Error handling pending invite:", e);
+    }
+}
+
+async function finalizeJoinGroup(groupId) {
+    if (!savedGroupIds.includes(groupId)) {
+        savedGroupIds.push(groupId);
+        saveSavedGroupIds();
+    }
+    state.activeGroupId = groupId;
+    await subscribeToGroup(groupId);
+    renderAll();
+}
+
+function showClaimModal(groupId, groupData, user, unclaimedPeople) {
+    const modal = document.getElementById('invite-claim-modal');
+    if (!modal) return;
+
+    document.getElementById('invite-claim-group-name').textContent = groupData.name;
+    const listContainer = document.getElementById('invite-claim-people-list');
+
+    listContainer.innerHTML = unclaimedPeople.map(p => {
+        const char = p.name ? p.name.charAt(0).toUpperCase() : '?';
+        return `
+            <div class="invite-person-card" data-id="${p.id}">
+                <div class="avatar">${char}</div>
+                <div class="invite-person-name">${escapeHTML(p.name)}</div>
+                <div class="invite-check"><i class="fa-solid fa-check"></i></div>
+            </div>
+        `;
+    }).join('');
+
+    let selectedCardId = null;
+    const cards = listContainer.querySelectorAll('.invite-person-card');
+    const confirmBtn = document.getElementById('invite-claim-confirm-btn');
+
+    cards.forEach(card => {
+        card.addEventListener('click', () => {
+            cards.forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedCardId = card.dataset.id;
+            confirmBtn.disabled = false;
+        });
+    });
+
+    confirmBtn.onclick = async () => {
+        if (!selectedCardId) return;
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Claiming...';
+
+        try {
+            await claimPersonForInvite(groupId, selectedCardId, user);
+            await finalizeJoinGroup(groupId);
+            modal.classList.remove('active');
+        } catch (e) {
+            alert("Error claiming profile.");
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fa-solid fa-hand"></i> Claim This Spot';
+        }
+    };
+
+    const joinNewBtn = document.getElementById('invite-join-as-new-btn');
+    joinNewBtn.onclick = () => {
+        modal.classList.remove('active');
+        showWelcomeJoinModal(groupId, groupData, user);
+    };
+
+    modal.classList.add('active');
+}
+
+function showWelcomeJoinModal(groupId, groupData, user) {
+    const modal = document.getElementById('invite-join-modal');
+    if (!modal) return;
+
+    document.getElementById('invite-join-group-name').textContent = groupData.name;
+    document.getElementById('invite-join-name').value = user.displayName || '';
+    document.getElementById('invite-join-venmo').value = '';
+
+    const confirmBtn = document.getElementById('invite-join-confirm-btn');
+
+    confirmBtn.onclick = async () => {
+        const name = document.getElementById('invite-join-name').value.trim();
+        let venmo = document.getElementById('invite-join-venmo').value.trim();
+
+        if (!name) {
+            alert("Please enter a name.");
+            return;
+        }
+
+        if (venmo && !venmo.startsWith('@')) venmo = '@' + venmo;
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Joining...';
+
+        try {
+            const id = 'p_' + Date.now();
+            const newPerson = {
+                id,
+                name,
+                venmoUsername: venmo,
+                userId: user.uid
+            };
+
+            await db.collection('groups').doc(groupId).update({
+                people: firebase.firestore.FieldValue.arrayUnion(newPerson)
+            });
+
+            await finalizeJoinGroup(groupId);
+            modal.classList.remove('active');
+        } catch (e) {
+            console.error(e);
+            alert("Error joining group.");
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Join Trip';
+        }
+    };
+
+    modal.classList.add('active');
+}
+
+async function claimPersonForInvite(groupId, personId, user) {
+    await db.runTransaction(async (t) => {
+        const ref = db.collection('groups').doc(groupId);
+        const doc = await t.get(ref);
+        if (!doc.exists) throw new Error("Group does not exist.");
+
+        let groupData = doc.data();
+        let pIndex = groupData.people.findIndex(p => p.id === personId);
+        if (pIndex !== -1) {
+            if (groupData.people[pIndex].userId) {
+                throw new Error("This profile is already claimed.");
+            }
+            groupData.people[pIndex].userId = user.uid;
+            t.update(ref, { people: groupData.people });
+        }
+    });
 }
 
 function generateRoomCode() {
@@ -681,8 +836,9 @@ function initGroups() {
 
         document.getElementById('confirm-join-group-btn').addEventListener('click', async () => {
             const code = document.getElementById('join-group-code').value.trim().toUpperCase();
-            if (code && code.length === 6) {
+            if (code && code.length >= 6 && code.length <= 8) {
                 if (savedGroupIds.includes(code)) {
+                    state.activeGroupId = code;
                     alert("You are already in this trip.");
                     return;
                 }
@@ -692,14 +848,18 @@ function initGroups() {
                     savedGroupIds.push(code);
                     saveSavedGroupIds();
                     state.activeGroupId = code;
-                    await subscribeToGroup(code);
-                    joinGroupModal.classList.remove('active');
+                    try {
+                        await subscribeToGroup(code);
+                        joinGroupModal.classList.remove('active');
+                    } catch (e) {
+                        alert("Error: " + e.message);
+                    }
                     renderAll();
                 } else {
-                    alert("Trip code not found.");
+                    alert('Trip code not found.');
                 }
             } else {
-                alert("Please enter a valid 6-character code.");
+                alert('Please enter a valid 6-8 character trip code.');
             }
         });
     }
@@ -1147,7 +1307,7 @@ function renderMultiplePayers() {
                 <label>${safeName}</label>
             </div>
             <div class="participant-input-container">
-                <input type="number" id="mp_${safeId}" class="multi-payer-input participant-input" placeholder="0" step="0.01" min="0" value="${prevValue}" oninput="updateMultiplePayersSummary()">
+                <input type="number" id="mp_${safeId}" class="multi-payer-input" placeholder="0" step="0.01" min="0" value="${prevValue}" oninput="updateMultiplePayersSummary()">
                 <span class="split-unit">$</span>
             </div>
         </div>
@@ -1287,13 +1447,21 @@ function updateSplitSummary() {
 
     document.getElementById('expense-total-display').textContent = totalAmount.toFixed(2);
 
-    let currentTotal = 0;
-    const checkboxes = document.querySelectorAll('.participant-cb:checked');
+    // Scope to the split-participants container only to avoid collisions with
+    // the paid-for select or multi-payer inputs which share the same class names.
+    const splitContainer = document.getElementById('split-participants');
+    if (!splitContainer) return;
+
+    // Also scope the checked count to the same container so totalSelected is always
+    // accurate — a global query could pick up stale checked elements from old renders.
+    const checkboxes = splitContainer.querySelectorAll('.participant-cb:checked');
     const totalSelected = checkboxes.length;
 
-    document.querySelectorAll('.participant-input').forEach(input => {
+    splitContainer.querySelectorAll('.participant-input').forEach(input => {
         const id = input.id.replace('input_', '');
-        const isChecked = document.getElementById('part_' + id).checked;
+        const cbEl = document.getElementById('part_' + id);
+        if (!cbEl) return; // Safety guard — skip non-participant inputs
+        const isChecked = cbEl.checked;
 
         if (!isChecked) {
             input.value = '';
@@ -1331,6 +1499,14 @@ function updateSplitSummary() {
     } else if (currentSplitMode === 'shares') {
         totalEl.textContent = currentTotal.toFixed(1) + ' shares';
         // No total validation needed for shares, they are proportional
+        summaryEl.classList.remove('error');
+    } else if (currentSplitMode === 'equal') {
+        // For equal mode, calculate properly and show — no error check needed
+        if (totalSelected > 0) {
+            totalEl.textContent = totalAmount.toFixed(2);
+        } else {
+            totalEl.textContent = '0.00';
+        }
         summaryEl.classList.remove('error');
     } else {
         totalEl.textContent = currentTotal.toFixed(2);
@@ -1400,7 +1576,13 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
 
         checkboxes.forEach(cb => {
             const personId = cb.value;
-            const val = parseFloat(document.getElementById('input_' + personId).value) || 0;
+            let val;
+            if (currentSplitMode === 'equal') {
+                // Always compute fresh for equal mode — don't rely on disabled DOM inputs
+                val = amount / checkboxes.length;
+            } else {
+                val = parseFloat(document.getElementById('input_' + personId).value) || 0;
+            }
             participants.push({ personId, share: val });
         });
     }
@@ -1653,10 +1835,22 @@ function calculateBalances() {
                 }
             }
 
+            // Round debt to nearest cent to prevent floating point drift
+            // (e.g., 100/3 = 33.3333... → 33.33 so 3 participants sum to 99.99, not 100.00000001)
+            debt = Math.round(debt * 100) / 100;
+
             if (!balances[p.personId][cur]) balances[p.personId][cur] = 0;
             balances[p.personId][cur] -= debt;
         });
     });
+
+    // Final pass: snap every balance to the nearest cent to eliminate
+    // any accumulated floating point residue before returning.
+    for (const personId of Object.keys(balances)) {
+        for (const cur of Object.keys(balances[personId])) {
+            balances[personId][cur] = Math.round(balances[personId][cur] * 100) / 100;
+        }
+    }
 
     return balances;
 }
@@ -1780,6 +1974,9 @@ function renderSettleUp() {
 
     container.innerHTML = '';
     if (breakdownContainer) breakdownContainer.classList.add('hidden');
+
+    const memberBreakdownSection = document.getElementById('member-breakdown-section');
+    if (memberBreakdownSection) memberBreakdownSection.classList.add('hidden');
 
     if (activeGroup.people.length === 0 || activeGroup.expenses.length === 0) {
         container.innerHTML = '<div><p class="subtitle">No debts to settle.</p></div>';
@@ -1998,7 +2195,14 @@ function renderMemberBreakdown(balances, targetCurrency, manualRate) {
 
         // Calculate combined balance and build details
         activeGroup.expenses.forEach(e => {
-            const isPayer = e.payerId === person.id;
+            let payerRecord = null;
+            if (e.payers && e.payers.length > 0) {
+                payerRecord = e.payers.find(p => p.personId === person.id);
+            } else if (e.payerId === person.id) {
+                payerRecord = { personId: person.id, amount: e.amount };
+            }
+
+            const isPayer = !!payerRecord;
             const participant = e.participants.find(p => p.personId === person.id);
 
             if (isPayer || participant) {
@@ -2011,7 +2215,7 @@ function renderMemberBreakdown(balances, targetCurrency, manualRate) {
                     }
                 }
 
-                const paid = isPayer ? e.amount : 0;
+                const paid = isPayer ? payerRecord.amount : 0;
                 let owed = 0;
                 if (participant) {
                     if (e.splitType === 'equal') {
@@ -2031,10 +2235,20 @@ function renderMemberBreakdown(balances, targetCurrency, manualRate) {
                 const net = paid - owed;
                 combinedBalance += (net * rate);
 
-                const payerPerson = activeGroup.people.find(p => p.id === e.payerId);
-                const payerName = payerPerson ? payerPerson.name : 'Someone';
+                // Resolve payer names for the 'from' line
+                let payerName;
+                if (e.payers && e.payers.length > 1) {
+                    payerName = e.payers.map(pr => {
+                        const person = activeGroup.people.find(p => p.id === pr.personId);
+                        return person ? person.name : 'Someone';
+                    }).join(' & ');
+                } else {
+                    const legacyPayerId = (e.payers && e.payers.length > 0) ? e.payers[0].personId : e.payerId;
+                    const payerPerson = activeGroup.people.find(p => p.id === legacyPayerId);
+                    payerName = payerPerson ? payerPerson.name : 'Someone';
+                }
 
-                const paidVal = isPayer ? e.amount : 0;
+                const paidVal = isPayer ? payerRecord.amount : 0;
                 const borrowedVal = (participant && owed > 0) ? owed : 0;
 
                 let paidStr = paidVal > 0 ? `${paidVal.toFixed(2)} <span class="cur-label">${e.currency}</span>` : '<span style="opacity:0.3">-</span>';

@@ -15,7 +15,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <meta name="theme-color" content="#00f0ff">
+    <meta name="theme-color" content="#000000">
 </head>
 
 <body>
@@ -34,7 +34,7 @@
                 <div class="auth-section">
                     <label class="section-label">Join a Trip</label>
                     <div class="join-group-row">
-                        <input type="text" id="login-join-code" placeholder="ENTER 6-CHAR CODE" maxlength="6"
+                        <input type="text" id="login-join-code" placeholder="ENTER TRIP CODE" maxlength="8"
                             style="text-transform: uppercase;">
                         <button class="btn primary" id="login-join-btn">Join</button>
                     </div>
@@ -421,13 +421,13 @@
     <div class="modal" id="join-group-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Join a Trip</h3>
-                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+                <h3>Join an Existing Trip</h3>
+                <button class="close-modal-btn">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>Enter 6-Character Trip Code</label>
-                    <input type="text" id="join-group-code" placeholder="e.g. X7B9TQ"
+                    <label for="join-group-code">Trip Code (6-8 characters)</label>
+                    <input type="text" id="join-group-code" placeholder="ENTER CODE" maxlength="8"
                         style="text-transform: uppercase;">
                 </div>
             </div>
@@ -479,6 +479,68 @@
         </div>
     </div>
 
+    <!-- Invite: Claim Your Spot Modal -->
+    <div class="modal" id="invite-claim-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3>You've Been Invited!</h3>
+                    <p id="invite-claim-group-name"
+                        style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;"></p>
+                </div>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1.25rem; color: var(--text-muted); font-size: 0.95rem;">
+                    Are you one of these people? Select your name to claim your spot, or join as someone new.
+                </p>
+                <div id="invite-claim-people-list" class="invite-people-list">
+                    <!-- Dynamic: unclaimed person cards -->
+                </div>
+                <div style="margin-top: 1rem; text-decoration: none;">
+                    <button class="btn secondary" id="invite-join-as-new-btn" style="width: 100%;">
+                        <i class="fa-solid fa-user-plus"></i> Join as a New Person Instead
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn primary" id="invite-claim-confirm-btn" disabled>
+                    <i class="fa-solid fa-hand"></i> Claim This Spot
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invite: Join as New Person Modal -->
+    <div class="modal" id="invite-join-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3>Join the Trip!</h3>
+                    <p id="invite-join-group-name"
+                        style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;"></p>
+                </div>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1.25rem; color: var(--text-muted); font-size: 0.95rem;">
+                    Your name has been pre-filled from your Google account. Feel free to change it!
+                </p>
+                <div class="form-group">
+                    <label for="invite-join-name">Your Name</label>
+                    <input type="text" id="invite-join-name" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label for="invite-join-venmo">Venmo Username (Optional)</label>
+                    <input type="text" id="invite-join-venmo" placeholder="@username">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn primary" id="invite-join-confirm-btn">
+                    <i class="fa-solid fa-right-to-bracket"></i> Join Trip
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase v8 Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
@@ -486,7 +548,7 @@
 
     </div> <!-- end .app-container -->
 
-    <script src="app.js?v=1.0.3"></script>
+    <script src="app.js?v=1.0.4"></script>
 </body>
 
 </html>
