@@ -1,22 +1,12 @@
-const CACHE_NAME = 'splitfool-cache-v5';
-const urlsToCache = [
-    './',
-    './index.html',
-    './style.css',
-    './app.js',
-    './manifest.json',
-    './icons/icon-192x192.png',
-    './icons/icon-512x512.png',
-    './icons/apple-touch-icon.png',
-    './favicon.ico'
-];
+const CACHE_NAME = 'splitfool-cache-v6';
+const urlsToCache = []; // Disabled for development
 
 self.addEventListener('install', event => {
     self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                return cache.addAll(urlsToCache);
+                return cache.addAll([]);
             })
     );
 });

@@ -701,6 +701,10 @@ function initGroups() {
         groupSelect.addEventListener('change', (e) => {
             state.activeGroupId = e.target.value;
             saveState();
+
+            // Clean slate when moving between groups to prevent UI state carryover
+            resetExpenseForm();
+
             renderAll();
         });
     }
@@ -1284,15 +1288,19 @@ function renderMultiplePayers() {
     if (!activeGroup || !activeGroup.people) return;
 
     const currentValues = {};
-    try {
-        document.querySelectorAll('.multi-payer-input').forEach(input => {
-            if (input && input.id) {
-                const id = input.id.replace('mp_', '');
-                currentValues[id] = input.value;
-            }
-        });
-    } catch (e) {
-        console.error("Failed to get current values", e);
+    if (container.children.length === 0) {
+        // First render or freshly cleared, don't grab states!
+    } else {
+        try {
+            container.querySelectorAll('.multi-payer-input').forEach(input => {
+                if (input && input.id) {
+                    const id = input.id.replace('mp_', '');
+                    currentValues[id] = input.value;
+                }
+            });
+        } catch (e) {
+            console.error("Failed to get current values", e);
+        }
     }
 
     container.innerHTML = activeGroup.people.map(p => {
@@ -1354,11 +1362,11 @@ function renderSplitParticipants() {
     // Cache existing checkbox states and input values to prevent overwriting user progress
     const currentStates = {};
     const currentValues = {};
-    document.querySelectorAll('.participant-cb').forEach(cb => {
+    container.querySelectorAll('.participant-cb').forEach(cb => {
         const id = cb.id.replace('part_', '');
         currentStates[id] = cb.checked;
     });
-    document.querySelectorAll('.participant-input').forEach(input => {
+    container.querySelectorAll('.participant-input').forEach(input => {
         const id = input.id.replace('input_', '');
         currentValues[id] = input.value;
     });
@@ -1404,8 +1412,11 @@ function renderSplitParticipants() {
 
 // Global helper for the new touch cards
 window.toggleParticipant = function (id) {
-    const cb = document.getElementById('part_' + id);
-    const card = document.getElementById('card_' + id);
+    const splitContainer = document.getElementById('split-participants');
+    if (!splitContainer) return;
+
+    const cb = splitContainer.querySelector(`[id="part_${id}"]`);
+    const card = splitContainer.querySelector(`[id="card_${id}"]`);
     if (!cb || !card) return;
 
     cb.checked = !cb.checked;
@@ -1457,64 +1468,71 @@ function updateSplitSummary() {
     const checkboxes = splitContainer.querySelectorAll('.participant-cb:checked');
     const totalSelected = checkboxes.length;
 
-    splitContainer.querySelectorAll('.participant-input').forEach(input => {
-        const id = input.id.replace('input_', '');
-        const cbEl = document.getElementById('part_' + id);
-        if (!cbEl) return; // Safety guard — skip non-participant inputs
-        const isChecked = cbEl.checked;
+    try {
+        let currentTotal = 0;
 
-        if (!isChecked) {
-            input.value = '';
-            input.disabled = true;
-            return;
-        }
+        splitContainer.querySelectorAll('.participant-input').forEach(input => {
+            const id = input.id.replace('input_', '');
+            try {
+                const cbEl = splitContainer.querySelector(`[id="part_${id}"]`);
+                if (!cbEl) return; // Safety guard — skip non-participant inputs
+                const isChecked = cbEl.checked;
 
-        input.disabled = currentSplitMode === 'equal';
+                if (!isChecked) {
+                    input.value = '';
+                    input.disabled = true;
+                    return;
+                }
 
-        if (currentSplitMode === 'equal' && totalSelected > 0) {
-            const splitAmount = totalAmount / totalSelected;
-            input.value = splitAmount.toFixed(2);
-            currentTotal += splitAmount;
-        } else {
-            currentTotal += parseFloat(input.value) || 0;
-        }
-    });
+                input.disabled = currentSplitMode === 'equal';
 
-    const summaryEl = document.getElementById('split-summary');
-    const totalEl = document.getElementById('split-total-amount');
+                if (currentSplitMode === 'equal' && totalSelected > 0) {
+                    const splitAmount = totalAmount / totalSelected;
+                    input.value = splitAmount.toFixed(2);
+                    currentTotal += splitAmount;
+                } else {
+                    currentTotal += parseFloat(input.value) || 0;
+                }
+            } catch (innerErr) {
+                console.error("Crash on loop id:", id, innerErr);
+            }
+        });
 
-    if (currentSplitMode === 'paid_for') {
-        totalEl.textContent = totalAmount.toFixed(2);
-        summaryEl.classList.remove('error');
-        return;
-    }
+        const summaryEl = document.getElementById('split-summary');
+        const totalEl = document.getElementById('split-total-amount');
 
-    if (currentSplitMode === 'percent') {
-        totalEl.textContent = currentTotal.toFixed(1) + '%';
-        if (Math.abs(currentTotal - 100) > 0.1 && checkboxes.length > 0) {
-            summaryEl.classList.add('error');
-        } else {
+        if (currentSplitMode === 'paid_for') {
+            document.getElementById('split-text').innerHTML = `Who did you pay for?`;
             summaryEl.classList.remove('error');
-        }
-    } else if (currentSplitMode === 'shares') {
-        totalEl.textContent = currentTotal.toFixed(1) + ' shares';
-        // No total validation needed for shares, they are proportional
-        summaryEl.classList.remove('error');
-    } else if (currentSplitMode === 'equal') {
-        // For equal mode, calculate properly and show — no error check needed
-        if (totalSelected > 0) {
-            totalEl.textContent = totalAmount.toFixed(2);
-        } else {
-            totalEl.textContent = '0.00';
-        }
-        summaryEl.classList.remove('error');
-    } else {
-        totalEl.textContent = currentTotal.toFixed(2);
-        if (Math.abs(currentTotal - totalAmount) > 0.05 && checkboxes.length > 0) {
-            summaryEl.classList.add('error');
-        } else {
+        } else if (currentSplitMode === 'percent') {
+            totalEl.textContent = currentTotal.toFixed(1) + '%';
+            if (Math.abs(currentTotal - 100) > 0.1 && checkboxes.length > 0) {
+                summaryEl.classList.add('error');
+            } else {
+                summaryEl.classList.remove('error');
+            }
+        } else if (currentSplitMode === 'shares') {
+            totalEl.textContent = currentTotal.toFixed(1) + ' shares';
+            // No total validation needed for shares, they are proportional
             summaryEl.classList.remove('error');
+        } else if (currentSplitMode === 'equal') {
+            // For equal mode, calculate properly and show — no error check needed
+            if (totalSelected > 0) {
+                totalEl.textContent = totalAmount.toFixed(2);
+            } else {
+                totalEl.textContent = '0.00';
+            }
+            summaryEl.classList.remove('error');
+        } else {
+            totalEl.textContent = currentTotal.toFixed(2);
+            if (Math.abs(currentTotal - totalAmount) > 0.05 && checkboxes.length > 0) {
+                summaryEl.classList.add('error');
+            } else {
+                summaryEl.classList.remove('error');
+            }
         }
+    } catch (e) {
+        console.error("FATAL CRASH IN updateSplitSummary:", e);
     }
 }
 
@@ -1535,17 +1553,20 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
         payers.push({ personId: payerId, amount: amount });
     } else {
         const summaryEl = document.getElementById('multiple-payers-summary');
-        if (summaryEl.classList.contains('error')) {
+        if (summaryEl && summaryEl.classList.contains('error')) {
             alert('The multiple payers total does not match the expense amount.');
             return;
         }
-        document.querySelectorAll('.multi-payer-input').forEach(input => {
-            const val = parseFloat(input.value) || 0;
-            if (val > 0) {
-                const personId = input.id.replace('mp_', '');
-                payers.push({ personId, amount: val });
-            }
-        });
+        const multiPayerContainer = document.getElementById('multiple-payers-list');
+        if (multiPayerContainer) {
+            multiPayerContainer.querySelectorAll('.multi-payer-input').forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                if (val > 0) {
+                    const personId = input.id.replace('mp_', '');
+                    payers.push({ personId, amount: val });
+                }
+            });
+        }
         if (payers.length === 0) {
             alert('Please specify who paid for this expense.');
             return;
@@ -1562,7 +1583,8 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
         }
         participants.push({ personId: owedById, share: amount });
     } else {
-        const checkboxes = document.querySelectorAll('.participant-cb:checked');
+        const splitContainer = document.getElementById('split-participants');
+        const checkboxes = splitContainer ? splitContainer.querySelectorAll('.participant-cb:checked') : [];
         if (checkboxes.length === 0) {
             alert('Please select at least one participant.');
             return;
@@ -1670,15 +1692,18 @@ window.editExpense = function (id) {
     renderSplitParticipants();
 
     // Force clear all defaults since renderSplitParticipants assumes 'true' for new renders
-    document.querySelectorAll('.participant-cb').forEach(cb => cb.checked = false);
-    document.querySelectorAll('.participant-card').forEach(card => card.classList.remove('active'));
-    document.querySelectorAll('.participant-input').forEach(input => input.value = '');
+    const splitContainer = document.getElementById('split-participants');
+    if (!splitContainer) return;
+
+    splitContainer.querySelectorAll('.participant-cb').forEach(cb => cb.checked = false);
+    splitContainer.querySelectorAll('.participant-card').forEach(card => card.classList.remove('active'));
+    splitContainer.querySelectorAll('.participant-input').forEach(input => input.value = '');
 
     // Fill participant values
     expense.participants.forEach(p => {
-        const cb = document.getElementById('part_' + p.personId);
-        const card = document.getElementById('card_' + p.personId);
-        const input = document.getElementById('input_' + p.personId);
+        const cb = splitContainer.querySelector(`[id="part_${p.personId}"]`);
+        const card = splitContainer.querySelector(`[id="card_${p.personId}"]`);
+        const input = splitContainer.querySelector(`[id="input_${p.personId}"]`);
 
         if (cb) cb.checked = true;
         if (card) card.classList.add('active');
@@ -1805,12 +1830,12 @@ function calculateBalances() {
             e.payers.forEach(payer => {
                 if (balances[payer.personId]) {
                     if (!balances[payer.personId][cur]) balances[payer.personId][cur] = 0;
-                    balances[payer.personId][cur] += payer.amount;
+                    balances[payer.personId][cur] += Number(payer.amount) || 0;
                 }
             });
         } else if (balances[e.payerId]) { // Fallback for old expenses
             if (!balances[e.payerId][cur]) balances[e.payerId][cur] = 0;
-            balances[e.payerId][cur] += amount;
+            balances[e.payerId][cur] += Number(amount) || 0;
         }
 
         // Participants get debt
@@ -1823,15 +1848,18 @@ function calculateBalances() {
             if (!balances[p.personId]) return;
 
             let debt = 0;
-            if (e.splitType === 'equal') {
-                debt = amount / e.participants.length;
+            const expenseAmount = Number(e.amount) || 0;
+            const participantShare = Number(p.share) || 0;
+
+            if (e.splitType === 'equal' || !e.splitType) {
+                debt = expenseAmount / Math.max(1, e.participants.length);
             } else if (e.splitType === 'exact' || e.splitType === 'paid_for') {
-                debt = p.share;
+                debt = participantShare;
             } else if (e.splitType === 'percent') {
-                debt = (amount * p.share) / 100;
+                debt = (expenseAmount * participantShare) / 100;
             } else if (e.splitType === 'shares') {
                 if (totalShares > 0) {
-                    debt = amount * (p.share / totalShares);
+                    debt = expenseAmount * (participantShare / totalShares);
                 }
             }
 
