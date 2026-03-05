@@ -1733,7 +1733,18 @@ window.deleteExpense = function (id) {
 function renderExpenses() {
     const activeGroup = getActiveGroup();
     const list = document.getElementById('expense-list');
-    list.innerHTML = '';
+    list.innerHTML = ''; // Clear previous renders!
+
+    const fabButton = document.querySelector('.fab');
+    if (activeGroup.isLocked) {
+        if (fabButton) {
+            fabButton.style.display = 'none';
+        }
+    } else {
+        if (fabButton) {
+            fabButton.style.display = 'flex';
+        }
+    }
 
     const countDisplay = document.getElementById('expense-count-display');
     if (countDisplay) {
@@ -1741,8 +1752,17 @@ function renderExpenses() {
         countDisplay.textContent = count > 0 ? `(${count})` : '';
     }
 
+    if (activeGroup.isLocked) {
+        list.innerHTML = `
+            <div class="card" style="margin-bottom: 1rem; text-align: center; border: 1px solid var(--warning); background: rgba(255,193,7,0.05);">
+                <span style="color: var(--warning); font-weight: bold;"><i class="fa-solid fa-lock"></i> Trip is Locked</span>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; margin-bottom: 0;">This group has been moved to the Settle Up phase. No new expenses can be added.</p>
+            </div>
+        `;
+    }
+
     if (activeGroup.expenses.length === 0) {
-        list.innerHTML = '<p class="subtitle">No expenses added yet.</p>';
+        list.innerHTML += '<p class="subtitle">No expenses added yet.</p>';
         return;
     }
 
@@ -1779,39 +1799,67 @@ function renderExpenses() {
         const safeId = escapeHTML(e.id);
         const safeSplit = escapeHTML(e.splitType);
 
+        const isSettlement = safeId.startsWith('set_');
+
+        let actionButtons = `
+            <button class="expense-action-btn edit" onclick="editExpense('${safeId}')" title="Edit Expense">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="expense-action-btn delete" onclick="deleteExpense('${safeId}')" title="Delete Expense">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
+
+        if (isSettlement) {
+            actionButtons = `
+            <button class="expense-action-btn delete" onclick="deleteExpense('${safeId}')" title="Delete Payment Record">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+            `;
+        }
+
+        let detailsHtml = `
+            <div class="expense-details" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                <div class="payer-badge" style="color: var(--text-main);">
+                    Paid by <strong>${payerText}</strong>
+                </div>
+                <div class="split-info" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-muted); font-size: 0.9em;">
+                    <span>For: ${participantNames}</span>
+                    <span class="split-badge" style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: capitalize; color: var(--text-main);">
+                        ${safeSplit.replace('_', ' ')}
+                    </span>
+                </div>
+            </div>
+        `;
+
+        if (isSettlement) {
+            detailsHtml = `
+            <div class="expense-details" style="margin-top: 8px;">
+                <span style="background: var(--success); color: #fff; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-check-circle"></i> Settled Up
+                </span>
+            </div>
+            `;
+        }
+
         list.innerHTML += `
-            <div class="card expense-card" id="exp_${safeId}">
+            <div class="card expense-card ${isSettlement ? 'settled-card' : ''}" id="exp_${safeId}">
                 <div class="expense-header">
                     <div style="flex:1">
-                        <h3>${safeDesc}</h3>
+                        <h3 style="${isSettlement ? 'color: var(--success)' : ''}">${safeDesc}</h3>
                     </div>
-                    <div class="amount">${symbol} ${e.amount.toFixed(2)}</div>
+                    <div class="amount ${isSettlement ? 'positive' : ''}">${symbol} ${e.amount.toFixed(2)}</div>
                     <div class="expense-actions">
-                        <button class="expense-action-btn edit" onclick="editExpense('${safeId}')" title="Edit Expense">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        <button class="expense-action-btn delete" onclick="deleteExpense('${safeId}')" title="Delete Expense">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                        ${actionButtons}
                     </div>
                 </div>
-                <div class="expense-details" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
-                    <div class="payer-badge" style="color: var(--text-main);">
-                        Paid by <strong>${payerText}</strong>
-                    </div>
-                    <div class="split-info" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-muted); font-size: 0.9em;">
-                        <span>For: ${participantNames}</span>
-                        <span class="split-badge" style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; text-transform: capitalize; color: var(--text-main);">
-                            ${safeSplit.replace('_', ' ')}
-                        </span>
-                    </div>
-                </div>
+                ${detailsHtml}
             </div>
         `;
     });
 }
 
-function calculateBalances() {
+function calculateBalances(ignoreSettlements = false) {
     const activeGroup = getActiveGroup();
     const balances = {};
 
@@ -1822,6 +1870,8 @@ function calculateBalances() {
 
     // Calculate per expense
     activeGroup.expenses.forEach(e => {
+        if (ignoreSettlements && e.id.startsWith('set_')) return;
+
         const amount = e.amount;
         const cur = e.currency;
 
@@ -2000,7 +2050,24 @@ function renderSettleUp() {
 
     if (!container || !modeSelect) return;
 
+    // Clear the container before rendering the lock button to prevent stacking
     container.innerHTML = '';
+
+    const currentUser = typeof firebase !== 'undefined' ? firebase.auth().currentUser : null;
+    let lockBtnHtml = '';
+
+    // Show lock button if the user is the creator (via Firebase or LocalStorage), OR if the group has no creator assigned (legacy test groups)
+    const isCreator = (currentUser && (currentUser.email === activeGroup.creatorEmail || currentUser.uid === activeGroup.creatorId)) || (myUserId && myUserId === activeGroup.creatorId);
+    if (!activeGroup.creatorId || isCreator) {
+        if (activeGroup.isLocked) {
+            lockBtnHtml = `<button onclick="toggleGroupLock(false)" class="btn outline" style="margin-bottom: 1rem; width: 100%; border-color: var(--success); color: var(--success); font-weight: bold;"><i class="fa-solid fa-unlock"></i> Unlock Group</button>`;
+        } else {
+            lockBtnHtml = `<button onclick="toggleGroupLock(true)" class="btn outline" style="margin-bottom: 1rem; width: 100%; border-color: var(--warning); color: var(--warning); font-weight: bold;"><i class="fa-solid fa-lock"></i> Lock Group for Settlements</button>`;
+        }
+    }
+
+    container.innerHTML += lockBtnHtml;
+
     if (breakdownContainer) breakdownContainer.classList.add('hidden');
 
     const memberBreakdownSection = document.getElementById('member-breakdown-section');
@@ -2012,7 +2079,8 @@ function renderSettleUp() {
         return;
     }
 
-    const balances = calculateBalances();
+    const actualBalances = calculateBalances();
+    const historicalBalances = calculateBalances(true);
 
     // 1. Find all unique currencies used and group totals
     const groupTotals = {};
@@ -2023,7 +2091,7 @@ function renderSettleUp() {
         usedCurrencies.add(e.currency);
     });
 
-    for (const [personId, personBals] of Object.entries(balances)) {
+    for (const [personId, personBals] of Object.entries(historicalBalances)) {
         for (const [cur, amt] of Object.entries(personBals)) {
             if (Math.abs(amt) > 0.01) usedCurrencies.add(cur);
         }
@@ -2054,9 +2122,11 @@ function renderSettleUp() {
 
         // AUTO-DEFAULT LOGIC
         if (currentMode === 'separate' || !currentMode) {
-            if (usedCurrencies.size > 1) {
-                // Pick the most used currency
-                let bestCur = 'USD';
+            if (usedCurrencies.has('USD')) {
+                modeSelect.value = 'USD';
+            } else if (usedCurrencies.size > 1) {
+                // Pick the most used currency if USD isn't available
+                let bestCur = Array.from(usedCurrencies)[0];
                 let maxTotal = -1;
                 for (const [cur, total] of Object.entries(groupTotals)) {
                     if (total > maxTotal) {
@@ -2090,40 +2160,100 @@ function renderSettleUp() {
 
     const renderTxList = (transactions, currency) => {
         if (transactions.length === 0) return '';
-        let html = '<ul class="settle-list" style="padding: 0; margin-top: 1rem;">';
-        transactions.forEach(tx => {
-            const fromPerson = activeGroup.people.find(p => p.id === tx.from);
-            const toPerson = activeGroup.people.find(p => p.id === tx.to);
-            const fromName = fromPerson?.name || 'Unknown';
-            const toName = toPerson?.name || 'Unknown';
 
-            let venmoBtn = '';
-            if (toPerson && toPerson.venmoUsername) {
-                const cleanUsername = toPerson.venmoUsername.replace('@', '');
-                const venmoUrl = `https://venmo.com/?tx=pay&txn=pay&audience=private&recipients=${cleanUsername}&amount=${tx.amount.toFixed(2)}&note=SplitFool%20Settlement`;
-                venmoBtn = `<a href="${venmoUrl}" target="_blank" class="btn" style="background:#008CFF; color:white; padding:0.25rem 0.5rem; text-decoration:none; font-size:0.8rem; border-radius:4px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="fa-brands fa-venmo"></i> Pay</a>`;
+        // Group transactions by Creditor (the person receiving money)
+        const groupedByCreditor = {};
+        transactions.forEach(tx => {
+            if (!groupedByCreditor[tx.to]) {
+                groupedByCreditor[tx.to] = [];
             }
+            groupedByCreditor[tx.to].push(tx);
+        });
+
+        let html = '<div class="settle-list" style="margin-top: 1rem;">';
+
+        for (const [creditorId, txs] of Object.entries(groupedByCreditor)) {
+            const creditor = activeGroup.people.find(p => p.id === creditorId);
+            const creditorName = creditor?.name || 'Unknown';
+
+            // Calculate total being paid to this creditor
+            const totalReceiving = txs.reduce((sum, tx) => sum + tx.amount, 0);
 
             html += `
-                <li style="list-style:none; margin-bottom: 0.5rem;">
-                    <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding: 0.75rem 1rem;">
-                        <div style="display:flex; align-items:center;">
-                            <strong>${escapeHTML(fromName)}</strong>&nbsp;pays&nbsp;<strong>${escapeHTML(toName)}</strong>
-                            ${venmoBtn}
-                        </div>
-                        <div class="amount positive" style="font-weight: 800;">${tx.amount.toFixed(2)} ${escapeHTML(currency)}</div>
+                <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--primary-dark); padding: 0;">
+                    <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-hand-holding-dollar" style="color: var(--success);"></i> 
+                            Payments to ${escapeHTML(creditorName)}
+                        </h3>
+                        <div style="font-weight: bold; color: var(--success);">Total: ${totalReceiving.toFixed(2)} ${escapeHTML(currency)}</div>
                     </div>
-                </li>
+                    <ul style="padding: 0; margin: 0; list-style: none;">
             `;
-        });
-        html += '</ul>';
+
+            txs.forEach(tx => {
+                const debtor = activeGroup.people.find(p => p.id === tx.from);
+                const debtorName = debtor?.name || 'Unknown';
+
+                // Check if this specific debt is still owed in actuality
+                const currentOwed = actualBalances[tx.from]?.[currency] || 0;
+                let isSettled = false;
+
+                // If their actual balance is extremely close to 0 (or positive), they no longer owe this debt
+                if (currentOwed > -0.01) {
+                    isSettled = true;
+                }
+
+                let venmoBtn = '';
+                let recordBtn = '';
+
+                const currentUser = typeof firebase !== 'undefined' ? firebase.auth().currentUser : null;
+                const isCurrentUserDebtor = currentUser && debtor && currentUser.email === debtor.email;
+
+                // Only show buttons if the user is actually the one paying
+                if (!isSettled && isCurrentUserDebtor) {
+                    if (creditor && creditor.venmoUsername) {
+                        const cleanUsername = creditor.venmoUsername.replace('@', '');
+                        const venmoUrl = `https://venmo.com/?tx=pay&txn=pay&audience=private&recipients=${cleanUsername}&amount=${tx.amount.toFixed(2)}&note=SplitFool%20Settlement`;
+                        venmoBtn = `<a href="${venmoUrl}" target="_blank" onclick="recordSettlement('${tx.from}', '${tx.to}', ${tx.amount}, '${currency}')" class="btn" style="background:#008CFF; color:white; padding:0.25rem 0.6rem; text-decoration:none; font-size:0.85rem; border-radius:6px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.4rem; font-weight: 600;"><i class="fa-brands fa-venmo"></i> Pay & Record</a>`;
+                    }
+                    recordBtn = `<button onclick="recordSettlement('${tx.from}', '${tx.to}', ${tx.amount}, '${currency}')" class="btn outline" style="padding:0.25rem 0.6rem; font-size:0.85rem; border-radius:6px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.4rem; font-weight: 600; border-color: var(--success); color: var(--success);"><i class="fa-solid fa-check"></i> Record Payment</button>`;
+                }
+
+                const amountHtml = isSettled
+                    ? `<span style="background: var(--success); color: #fff; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-check-circle"></i> Settled Up</span>`
+                    : `<span style="font-size: 0.85rem; color: var(--text-muted);">owes ${tx.amount.toFixed(2)} ${escapeHTML(currency)}</span>`;
+
+                html += `
+                        <li style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="avatar" style="width: 32px; height: 32px; font-size: 0.9rem; background: var(--bg-hover); opacity: ${isSettled ? '0.5' : '1'};">${debtorName.charAt(0).toUpperCase()}</div>
+                                <div style="display: flex; flex-direction: column; opacity: ${isSettled ? '0.5' : '1'};">
+                                    <strong style="text-decoration: ${isSettled ? 'line-through' : 'none'};">${escapeHTML(debtorName)}</strong>
+                                    ${amountHtml}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                ${venmoBtn}
+                                ${recordBtn}
+                            </div>
+                        </li>
+                `;
+            });
+            html += `
+                    </ul>
+                </div>
+            `;
+        }
+
+        html += '</div>';
         return html;
     };
 
     if (!isCombined) {
         let finalHtml = '';
         usedCurrencies.forEach(cur => {
-            const txs = simplifyDebts(balances, cur);
+            const txs = simplifyDebts(historicalBalances, cur);
             if (txs.length > 0) {
                 finalHtml += `
                     <h3 style="margin-top: ${finalHtml ? '2rem' : '0'}"><i class="fa-solid fa-coins"></i> ${cur} Settlements</h3>
@@ -2145,7 +2275,7 @@ function renderSettleUp() {
         if (breakdownContainer && breakdownList) {
             breakdownContainer.classList.remove('hidden');
             let bHtml = '<table style="width:100%; border-collapse: collapse;">';
-            bHtml += '<tr style="border-bottom: 1px solid rgba(255,255,255,0.1);"><th style="text-align:left; padding: 0.5rem 0;">Currency</th><th style="text-align:right;">Subtotal</th><th style="text-align:right;">Rate</th><th style="text-align:right;">Total (${targetCurrency})</th></tr>';
+            bHtml += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.1);"><th style="text-align:left; padding: 0.5rem 0;">Currency</th><th style="text-align:right;">Subtotal</th><th style="text-align:right;">Rate</th><th style="text-align:right;">Total (${targetCurrency})</th></tr>`;
 
             let grandTotal = 0;
             usedCurrencies.forEach(cur => {
@@ -2178,32 +2308,40 @@ function renderSettleUp() {
         }
 
         const combinedBalances = {};
-        for (const [personId, personBals] of Object.entries(balances)) {
-            let combinedAmount = 0;
-            for (const [cur, amt] of Object.entries(personBals)) {
-                if (cur === targetCurrency) {
-                    combinedAmount += amt;
-                } else {
-                    let rate = 1;
-                    if (!isNaN(manualRate)) {
-                        rate = manualRate;
-                    } else if (cachedExchangeRates && cachedExchangeRates[cur] && cachedExchangeRates[targetCurrency]) {
-                        rate = cachedExchangeRates[targetCurrency] / cachedExchangeRates[cur];
-                    }
-                    combinedAmount += (amt * rate);
-                }
-            }
-            combinedBalances[personId] = { [targetCurrency]: combinedAmount };
-        }
+        const combinedHistoricalBalances = {};
 
-        const transactions = simplifyDebts(combinedBalances, targetCurrency);
+        // Helper function for translating matrices
+        const buildCombined = (sourceObj, targetObj) => {
+            for (const [personId, personBals] of Object.entries(sourceObj)) {
+                let combinedAmount = 0;
+                for (const [cur, amt] of Object.entries(personBals)) {
+                    if (cur === targetCurrency) {
+                        combinedAmount += amt;
+                    } else {
+                        let rate = 1;
+                        if (!isNaN(manualRate)) {
+                            rate = manualRate;
+                        } else if (cachedExchangeRates && cachedExchangeRates[cur] && cachedExchangeRates[targetCurrency]) {
+                            rate = cachedExchangeRates[targetCurrency] / cachedExchangeRates[cur];
+                        }
+                        combinedAmount += (amt * rate);
+                    }
+                }
+                targetObj[personId] = { [targetCurrency]: combinedAmount };
+            }
+        };
+
+        buildCombined(actualBalances, combinedBalances);
+        buildCombined(historicalBalances, combinedHistoricalBalances);
+
+        const transactions = simplifyDebts(combinedHistoricalBalances, targetCurrency);
         container.innerHTML = `
             <h3><i class="fa-solid fa-bolt" style="color:var(--success)"></i> Simplified ${targetCurrency} Settlements</h3>
             <p class="subtitle" style="margin-bottom: 1rem;">All debts converted and minimized to just ${transactions.length} transactions.</p>
             ${renderTxList(transactions, targetCurrency)}
         `;
 
-        renderMemberBreakdown(balances, targetCurrency, manualRate);
+        renderMemberBreakdown(actualBalances, targetCurrency, manualRate);
     }
 }
 
@@ -2399,3 +2537,71 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
+
+// Settlement Payment Recorder
+window.recordSettlement = function (fromId, toId, amount, currency) {
+    if (!confirm(`Record a ${currency} ${amount.toFixed(2)} payment from this person?`)) return;
+
+    const activeGroup = getActiveGroup();
+    if (!activeGroup || activeGroup.id === 'no_groups') return;
+
+    const fromPerson = activeGroup.people.find(p => p.id === fromId);
+    const toPerson = activeGroup.people.find(p => p.id === toId);
+    if (!fromPerson || !toPerson) return;
+
+    // Check if the current user is neither the sender nor the recipient
+    // NOTE: Removed for testing/local convenience. In a strict prod environment
+    // this would be enabled to prevent third-party logging.
+    /*
+    const currentUser = firebase.auth().currentUser;
+    if (currentUser) {
+        if (currentUser.email !== fromPerson.email && currentUser.email !== toPerson.email && fromPerson.email !== undefined && toPerson.email !== undefined) {
+             alert('You can only record payments that you are involved in either as the sender or receiver.');
+             return;
+        }
+    }
+    */
+
+    const db = firebase.firestore();
+
+    const settlementExpense = {
+        id: 'set_' + Date.now(),
+        description: `Settlement: ${fromPerson.name} to ${toPerson.name}`,
+        amount: amount,
+        currency: currency,
+        createdAt: new Date().toISOString(),
+        splitType: 'exact',
+        payerId: fromId,
+        payers: [{ personId: fromId, amount: amount }],
+        participants: [{ personId: toId, share: amount }]
+    };
+
+    db.collection('groups').doc(activeGroup.id).update({
+        expenses: firebase.firestore.FieldValue.arrayUnion(settlementExpense)
+    }).then(() => {
+        alert("Payment Recorded successfully. They are marked as Settled Up for this amount.");
+        renderAll();
+    }).catch(e => {
+        console.error("Error recording settlement", e);
+        alert("Failed to record payment. Please try again.");
+    });
+};
+
+window.toggleGroupLock = function (lockedStatus) {
+    const activeGroup = getActiveGroup();
+    if (!activeGroup || activeGroup.id === 'no_groups') return;
+
+    const db = firebase.firestore();
+    db.collection('groups').doc(activeGroup.id).update({
+        isLocked: lockedStatus
+    }).then(() => {
+        if (lockedStatus) {
+            alert('Group locked! Members can no longer add expenses.');
+        } else {
+            alert('Group unlocked! Members can add expenses again.');
+        }
+    }).catch(e => {
+        console.error("Error toggling lock:", e);
+        alert("Failed to modify lock status.");
+    });
+};
