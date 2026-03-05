@@ -168,18 +168,28 @@
 
                 <div class="card exchange-rate-card" style="margin-bottom: 2rem;">
                     <h3><i class="fa-solid fa-earth-americas"></i> Settlement Options</h3>
-                    <div class="form-row" style="margin-top: 1rem; align-items: flex-end;">
-                        <div class="form-group half" style="margin-bottom: 0;">
-                            <label for="settle-mode">Settle In</label>
-                            <select id="settle-mode">
+                    <div class="form-row"
+                        style="margin-top: 1.5rem; display: flex; gap: 1rem; align-items: flex-start;">
+                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                            <label for="settle-mode" style="font-size: 0.85rem; color: var(--text-muted);">Settle
+                                In</label>
+                            <select id="settle-mode" style="width: 100%;">
+                                <option value="USD" selected>USD - US Dollar Simplified</option>
                                 <option value="separate">Separate Currencies</option>
                                 <!-- Dynamic combined options will render here -->
                             </select>
                         </div>
-                        <div class="form-group half hidden" id="manual-rate-container" style="margin-bottom: 0;">
-                            <label for="manual-rate">Manual Rate (1 <span id="manual-rate-source"></span> = X <span
+                        <div class="form-group hidden" id="manual-rate-container" style="flex: 1; margin-bottom: 0;">
+                            <label for="manual-rate" style="font-size: 0.85rem; color: var(--text-muted);">Manual Rate
+                                (1 <span id="manual-rate-source"></span> = X <span
                                     id="manual-rate-target"></span>)</label>
-                            <input type="number" id="manual-rate" step="0.0001" placeholder="Enter rate">
+                            <div style="position: relative;">
+                                <input type="number" id="manual-rate" step="0.0001" placeholder="Enter rate"
+                                    style="width: 100%;">
+                                <div id="live-rate-hint"
+                                    style="position: absolute; left: 0; bottom: -20px; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -238,6 +248,7 @@
                 <button class="close-btn"><i class="fa-solid fa-times"></i></button>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="edit-person-id">
                 <div class="form-group">
                     <label for="edit-person-name">Name</label>
                     <input type="text" id="edit-person-name" placeholder="Enter name">
@@ -275,13 +286,31 @@
                     <div class="form-group half">
                         <label for="expense-currency">Currency</label>
                         <select id="expense-currency">
-                            <option value="USD">USD ($)</option>
-                            <option value="MXN">MXN ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            <option value="CAD">CAD ($)</option>
-                            <option value="AUD">AUD ($)</option>
-                            <option value="JPY">JPY (¥)</option>
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="EUR">EUR - Euro</option>
+                            <option value="JPY">JPY - Japanese Yen</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="AUD">AUD - Australian Dollar</option>
+                            <option value="CAD">CAD - Canadian Dollar</option>
+                            <option value="CHF">CHF - Swiss Franc</option>
+                            <option value="CNY">CNY - Chinese Yuan</option>
+                            <option value="HKD">HKD - Hong Kong Dollar</option>
+                            <option value="NZD">NZD - New Zealand Dollar</option>
+                            <option value="SEK">SEK - Swedish Krona</option>
+                            <option value="KRW">KRW - South Korean Won</option>
+                            <option value="SGD">SGD - Singapore Dollar</option>
+                            <option value="NOK">NOK - Norwegian Krone</option>
+                            <option value="MXN">MXN - Mexican Peso</option>
+                            <option value="INR">INR - Indian Rupee</option>
+                            <option value="RUB">RUB - Russian Ruble</option>
+                            <option value="ZAR">ZAR - South African Rand</option>
+                            <option value="TRY">TRY - Turkish Lira</option>
+                            <option value="BRL">BRL - Brazilian Real</option>
+                            <option value="TWD">TWD - New Taiwan Dollar</option>
+                            <option value="DKK">DKK - Danish Krone</option>
+                            <option value="PLN">PLN - Polish Zloty</option>
+                            <option value="THB">THB - Thai Baht</option>
+                            <option value="IDR">IDR - Indonesian Rupiah</option>
                         </select>
                     </div>
                 </div>
@@ -550,11 +579,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
-    </div> <!-- end .app-container -->
+    <!-- User Application Logic as ES Module -->
+    <script type="module" src="src/main.js"></script>
 
-    <script>
-        document.write('<script src="app.js' + cacheBuster + '"><\\/script>');
-    </script>
 </body>
 
 </html>
