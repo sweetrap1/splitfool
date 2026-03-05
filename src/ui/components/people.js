@@ -92,18 +92,18 @@ export function renderPeople() {
         }
 
         return `
-            <div class="card person-card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem; padding: 0.75rem 1rem; min-height: 85px;">
-                <div class="person-info" style="display:flex; align-items:center; gap: 1rem; flex: 1; min-width: 0;">
-                    <div class="avatar" style="width: 48px; height: 48px; font-size: 1.2rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">${char}</div>
-                    <div style="display:flex; flex-direction:column; justify-content: center; gap: 4px; min-width: 0; flex: 1;">
-                        <div style="display:flex; align-items:center; gap: 8px; flex-wrap: nowrap; min-width: 0;">
-                            <span style="font-weight: 700; font-size: 1.1rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1;">${escapeHTML(p.name)}</span>
-                            <div style="flex-shrink: 0; display: flex; gap: 4px;">${badgesHtml}</div>
+            <div class="card person-card">
+                <div class="person-info-container">
+                    <div class="avatar">${char}</div>
+                    <div class="person-details">
+                        <div class="person-name-row">
+                            <span class="person-name">${escapeHTML(p.name)}</span>
+                            <div class="badge-container">${badgesHtml}</div>
                         </div>
                         ${venmoBadge}
                     </div>
                 </div>
-                <div class="person-actions" style="display:flex; gap: 0.5rem; flex-shrink: 0; align-items: center; margin-left: 1rem;">
+                <div class="person-actions">
                     ${controlsHtml}
                 </div>
             </div>

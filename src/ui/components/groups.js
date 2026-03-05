@@ -136,13 +136,17 @@ export function initGroupsUI(renderAll) {
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Joining...';
 
             try {
-                const { joinGroupWithCode } = await import('../../api/auth.js');
-                const { setActiveGroup } = await import('../../state.js');
-
-                await joinGroupWithCode(code, state.currentUser);
-                setActiveGroup(code);
+                if (state.currentUser) {
+                    const { handleInviteFlow } = await import('./invite.js');
+                    await handleInviteFlow(code, state.currentUser, renderAll);
+                } else {
+                    const { joinGroupWithCode } = await import('../../api/auth.js');
+                    const { setActiveGroup } = await import('../../state.js');
+                    await joinGroupWithCode(code, null);
+                    setActiveGroup(code);
+                    renderAll();
+                }
                 joinModal.classList.remove('active');
-                renderAll();
             } catch (e) {
                 alert(e.message || "Failed to join trip.");
             } finally {

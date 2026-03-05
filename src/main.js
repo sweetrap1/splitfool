@@ -3,7 +3,6 @@
 import { auth, db } from './firebase-init.js';
 import { state, setCurrentUser, savedGroupIds, setActiveGroup } from './state.js';
 import { syncUserGroups, registerRenderCallback, subscribeToGroup } from './api/groups.js';
-import { handlePendingInvite } from './api/auth.js';
 import { fetchExchangeRate } from './utils/currency.js';
 
 // UI Initializers
@@ -57,11 +56,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             syncUserGroups(user.uid);
 
-            // Check for pending invite
-            handlePendingInvite(user).then(result => {
-                // To keep it simple for now, we leave the complex claiming UI logic pending 
-                // in this refactor pass, or we handle it here if `result` is truthy.
-            }).catch(e => console.error("Pending Invite Error:", e));
+            // Check for pending invite (Claiming/Joining flow)
+            import('./ui/components/invite.js').then(({ processPendingInvite }) => {
+                processPendingInvite(user, renderAll);
+            }).catch(e => console.error("Invite processing error:", e));
         } else {
             console.log("Auth state change: No user");
             syncUserGroups(null);
