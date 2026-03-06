@@ -42,6 +42,9 @@ export function calculateBalances(activeGroup, ignoreSettlements = false) {
             totalShares = e.participants.reduce((sum, p) => sum + (Number(p.share) || 0), 0);
         }
 
+        let totalDebited = 0;
+        const processedParticipants = [];
+
         e.participants.forEach(p => {
             if (!balances[p.personId]) return;
 
@@ -62,9 +65,31 @@ export function calculateBalances(activeGroup, ignoreSettlements = false) {
 
             // Round debt to nearest cent
             debt = Math.round(debt * 100) / 100;
+            totalDebited += debt;
+            processedParticipants.push({ personId: p.personId, debt, currency: cur });
+        });
 
-            if (!balances[p.personId][cur]) balances[p.personId][cur] = 0;
-            balances[p.personId][cur] -= debt;
+        // Penny Leak Protection: Adjust for rounding errors
+        // (Only for equal splits or those meant to total the amount)
+        if (['equal', 'exact', 'percent', 'shares', 'paid_for'].includes(e.splitType || 'equal')) {
+            let diff = Math.round((amount - totalDebited) * 100) / 100;
+
+            // Distribute pennies if there's a small difference (rounding error)
+            // Usually diff is 0.01, -0.01, etc.
+            if (Math.abs(diff) > 0 && Math.abs(diff) < 0.1) {
+                const step = diff > 0 ? 0.01 : -0.01;
+                let i = 0;
+                while (Math.abs(diff) >= 0.009 && i < processedParticipants.length) {
+                    processedParticipants[i].debt += step;
+                    diff -= step;
+                    i++;
+                }
+            }
+        }
+
+        processedParticipants.forEach(p => {
+            if (!balances[p.personId][p.currency]) balances[p.personId][p.currency] = 0;
+            balances[p.personId][p.currency] -= Math.round(p.debt * 100) / 100;
         });
     });
 

@@ -42,7 +42,7 @@ export function initExpensesUI(renderAll) {
             const expenseIdInput = document.getElementById('expense-id');
             const existingId = expenseIdInput.value;
 
-            if (!desc || isNaN(amount) || amount <= 0) {
+            if (!desc || isNaN(amount)) {
                 alert('Please enter a valid description and amount.');
                 return;
             }
@@ -278,7 +278,7 @@ function renderMultiplePayers() {
                 <label>${safeName}</label>
             </div>
             <div class="participant-input-container">
-                <input type="number" id="mp_${safeId}" class="multi-payer-input" placeholder="0" step="0.01" min="0" value="${prevValue}" oninput="updateMultiplePayersSummary()">
+                <input type="number" id="mp_${safeId}" class="multi-payer-input" placeholder="0" step="0.01" value="${prevValue}" oninput="updateMultiplePayersSummary()">
                 <span class="split-unit">$</span>
             </div>
         </div>
@@ -335,7 +335,7 @@ function renderSplitParticipants() {
                 <label for="part_${safeId}" onclick="event.preventDefault()">${safeName}</label>
             </div>
             <div class="participant-input-container" onclick="event.stopPropagation()">
-                <input type="number" id="input_${safeId}" class="participant-input" placeholder="0" step="0.01" min="0" value="${prevValue}"
+                <input type="number" id="input_${safeId}" class="participant-input" placeholder="0" step="0.01" value="${prevValue}"
                     ${currentSplitMode === 'equal' ? 'disabled' : ''} oninput="updateSplitSummary()">
                 <span class="split-unit">${splitUnit}</span>
             </div>
