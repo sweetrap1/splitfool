@@ -502,10 +502,20 @@ export function renderExpenses() {
             `;
         }
 
+        let perPersonHtml = '';
+        if (safeSplit === 'equal') {
+            const count = e.participants.length;
+            if (count > 0) {
+                const share = e.amount / count;
+                perPersonHtml = `<span class="share-badge" style="background: rgba(var(--primary-rgb), 0.1); border: 1px solid rgba(var(--primary-rgb), 0.2); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${symbol} ${share.toFixed(2)} each</span>`;
+            }
+        }
+
         let detailsHtml = `
             <div class="expense-details" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
-                <div class="payer-badge" style="color: var(--text-main);">
-                    Paid by <strong>${payerText}</strong>
+                <div class="payer-badge" style="color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <span>Paid by <strong>${payerText}</strong></span>
+                    ${perPersonHtml}
                 </div>
                 <div class="split-info" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--text-muted); font-size: 0.9em;">
                     <span>For: ${participantNames}</span>

@@ -125,6 +125,21 @@ export function renderBalances() {
         return;
     }
 
+    window.toggleBalanceBreakdown = (personId) => {
+        const breakdown = document.getElementById(`breakdown_${personId}`);
+        const icon = document.getElementById(`icon_${personId}`);
+        if (!breakdown) return;
+
+        const isHidden = breakdown.classList.contains('hidden');
+        if (isHidden) {
+            breakdown.classList.remove('hidden');
+            if (icon) icon.style.transform = 'rotate(180deg)';
+        } else {
+            breakdown.classList.add('hidden');
+            if (icon) icon.style.transform = 'rotate(0deg)';
+        }
+    };
+
     list.innerHTML = people.map(p => {
         const char = p.name ? p.name.charAt(0).toUpperCase() : '?';
         const personBals = balances[p.id] || {};
@@ -145,18 +160,72 @@ export function renderBalances() {
         const isMe = currentUser && p.userId === currentUser.uid;
         const meBadge = isMe ? `<span class="me-badge">Me</span>` : '';
 
+        // Generate transactions breakdown
+        const transactions = [];
+        activeGroup.expenses.forEach(e => {
+            const cur = e.currency || 'USD';
+            const payer = e.payers?.find(pay => pay.personId === p.id);
+            const legacyPayer = e.payerId === p.id || e.paidBy === p.id;
+            const participant = e.participants?.find(part => part.personId === p.id);
+
+            if (payer || (legacyPayer && !e.payers) || participant) {
+                const paid = payer ? Number(payer.amount) : (legacyPayer && !e.payers ? Number(e.amount) : 0);
+                const owed = participant ? Number(participant.share || participant.amount || participant.exactAmount) : 0;
+                const net = paid - owed;
+
+                if (Math.abs(net) > 0.005) {
+                    transactions.push({
+                        desc: e.description,
+                        paid,
+                        owed,
+                        net,
+                        currency: cur
+                    });
+                }
+            }
+        });
+
+        const breakdownHtml = transactions.length > 0 ? `
+            <div id="breakdown_${p.id}" class="balance-breakdown hidden" style="width: 100%; box-sizing: border-box; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1rem; font-weight: 800; opacity: 0.8;">Detailed History</div>
+                <div class="balance-history-list" style="display: flex; flex-direction: column; gap: 4px;">
+                    ${transactions.map(t => {
+            const cls = t.net > 0 ? 'positive' : 'negative';
+            const prefix = t.net > 0 ? '+' : '';
+            return `
+                            <div class="balance-history-row" style="display: grid; grid-template-columns: 1fr auto 100px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); align-items: center; gap: 16px;">
+                                <div style="color: var(--text-main); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(t.desc)}</div>
+                                <div style="color: var(--text-muted); font-size: 0.8rem; text-align: right;">
+                                    ${t.paid > 0 ? `Lent <span style="color: var(--success); font-weight: 600;">${formatMoney(t.paid, t.currency)}</span>` : `Owed <span style="color: var(--danger); font-weight: 600;">${formatMoney(t.owed, t.currency)}</span>`}
+                                </div>
+                                <div class="${cls}" style="font-weight: 800; text-align: right; font-size: 0.95rem;">${prefix}${formatMoney(t.net, t.currency)}</div>
+                            </div>
+                        `;
+        }).join('')}
+                </div>
+            </div>
+        ` : '';
+
         return `
-            <div class="card person-card" style="margin-bottom: 1rem;">
-                <div class="person-info">
-                    <div class="avatar">${char}</div>
-                    <div>
-                        <div class="item-title" style="font-weight: 600;">${escapeHTML(p.name)} ${meBadge}</div>
-                        <div class="item-subtitle" style="font-size: 0.85rem; color: var(--text-muted);">${currencies.length > 0 ? 'Current Balance' : 'No outstanding debts'}</div>
+            <div class="card person-card" style="margin-bottom: 1rem; cursor: pointer; padding: 1.25rem 1.5rem;" onclick="toggleBalanceBreakdown('${p.id}')">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 20px;">
+                    <div class="person-info" style="flex: 1; min-width: 0;">
+                        <div class="avatar" style="width: 44px; height: 44px; font-size: 1.1rem; flex-shrink: 0;">${char}</div>
+                        <div style="min-width: 0; flex: 1;">
+                            <div class="item-title" style="font-weight: 700; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(p.name)} ${meBadge}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 20px; flex-shrink: 0;">
+                        <div class="balances-container" style="text-align: right;">
+                            ${balanceHtml}
+                        </div>
+                        <div style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);">
+                            <i id="icon_${p.id}" class="fa-solid fa-chevron-down" style="color: var(--text-muted); font-size: 0.85rem; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);"></i>
+                        </div>
                     </div>
                 </div>
-                <div class="balances-container" style="text-align: right;">
-                    ${balanceHtml}
-                </div>
+                ${breakdownHtml}
             </div>
         `;
     }).join('');
