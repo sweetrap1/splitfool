@@ -3,6 +3,7 @@
 import { addPerson, removePerson, editPerson, claimPerson } from '../../api/people.js';
 import { getActiveGroup, currentUser, isGroupAdmin } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
+import { showConfirm, showAlert } from '../../utils/dialogs.js';
 
 export function initPeopleUI() {
     const addPersonBtn = document.getElementById('add-person-btn');
@@ -123,17 +124,28 @@ function openEditPersonModal(id) {
 }
 
 async function removePersonUI(id) {
-    if (confirm('Are you sure you want to remove this person?')) {
+    const confirmed = await showConfirm('Remove Person', 'Are you sure you want to remove this person?', {
+        danger: true,
+        confirmText: 'Remove',
+        icon: 'fa-user-minus'
+    });
+
+    if (confirmed) {
         try {
             await removePerson(id);
         } catch (e) {
-            alert(e.message);
+            showAlert('Error', e.message, { icon: 'fa-circle-exclamation' });
         }
     }
 }
 
 async function claimPersonUI(id) {
-    if (confirm("Claim this profile as yours?")) {
+    const confirmed = await showConfirm("Claim Profile", "Claim this profile as yours?", {
+        confirmText: 'Claim Spot',
+        icon: 'fa-hand'
+    });
+
+    if (confirmed) {
         await claimPerson(id, currentUser.uid);
     }
 }

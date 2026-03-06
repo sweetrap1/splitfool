@@ -1,8 +1,9 @@
 // Expenses UI Component
 
-import { addExpense, editExpense, deleteExpense } from '../../api/expenses.js';
-import { getActiveGroup } from '../../state.js';
+import { deleteExpense, addExpense, editExpense } from '../../api/expenses.js';
+import { getActiveGroup, currentUser } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
+import { showConfirm, showAlert } from '../../utils/dialogs.js';
 
 let currentPayerMode = 'single'; // 'single' or 'multiple'
 let currentSplitMode = 'equal'; // equal, exact, percent, shares, paid_for
@@ -546,7 +547,7 @@ export function renderExpenses() {
 function editExpenseUI(id) {
     const activeGroup = getActiveGroup();
     if (activeGroup.isLocked) {
-        alert("This trip is locked. Expenses cannot be edited.");
+        showAlert("Trip Locked", "This trip is locked. Expenses cannot be edited.", { icon: 'fa-lock' });
         return;
     }
     const expense = activeGroup.expenses.find(e => e.id === id);
@@ -607,14 +608,21 @@ function editExpenseUI(id) {
 function deleteExpenseUI(id) {
     const activeGroup = getActiveGroup();
     if (activeGroup.isLocked) {
-        alert("This trip is locked. Expenses cannot be deleted.");
+        showAlert("Trip Locked", "This trip is locked. Expenses cannot be deleted.", { icon: 'fa-lock' });
         return;
     }
-    if (confirm('Are you sure you want to delete this expense?')) {
-        deleteExpense(id).then(() => {
-            const list = document.getElementById('expense-list');
-            const item = document.getElementById(`exp_${id}`);
-            if (item) item.remove();
-        });
-    }
+
+    showConfirm('Delete Expense', 'Are you sure you want to delete this expense?', {
+        danger: true,
+        confirmText: 'Delete',
+        icon: 'fa-trash-can'
+    }).then((confirmed) => {
+        if (confirmed) {
+            deleteExpense(id).then(() => {
+                const list = document.getElementById('expense-list');
+                const item = document.getElementById(`exp_${id}`);
+                if (item) item.remove();
+            });
+        }
+    });
 }

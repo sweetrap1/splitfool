@@ -574,6 +574,23 @@
         </div>
     </div>
 
+    <!-- Custom Alert/Confirm Modal -->
+    <div id="custom-dialog-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; padding: 2rem;">
+            <div id="dialog-icon" style="font-size: 3rem; margin-bottom: 1.5rem; color: var(--primary);">
+                <i class="fa-solid fa-circle-question"></i>
+            </div>
+            <h3 id="dialog-title" style="margin-bottom: 0.75rem; font-size: 1.5rem;">Are you sure?</h3>
+            <p id="dialog-message" style="color: var(--text-muted); line-height: 1.6; margin-bottom: 2rem;">
+                This action cannot be undone.
+            </p>
+            <div class="modal-footer" style="padding: 0; border: none; justify-content: center; gap: 1rem;">
+                <button id="dialog-cancel-btn" class="btn secondary" style="flex: 1;">Cancel</button>
+                <button id="dialog-confirm-btn" class="btn primary" style="flex: 1;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase v8 Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
