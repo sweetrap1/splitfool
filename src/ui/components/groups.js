@@ -24,8 +24,14 @@ export function initGroupsUI(renderAll) {
 
         document.getElementById('save-group-btn').addEventListener('click', async () => {
             const nameInput = document.getElementById('group-name').value.trim();
+            const defaultCur = document.getElementById('group-default-currency').value;
+            const settleCur = document.getElementById('group-settle-currency').value;
+
             if (nameInput) {
-                await createNewGroup(nameInput);
+                await createNewGroup(nameInput, {
+                    defaultCurrency: defaultCur,
+                    settleCurrency: settleCur
+                });
                 addGroupModal.classList.remove('active');
             }
         });
@@ -43,14 +49,26 @@ export function initGroupsUI(renderAll) {
             }
 
             document.getElementById('edit-group-name').value = activeGroup.name;
+            if (activeGroup.defaultCurrency) {
+                document.getElementById('edit-group-default-currency').value = activeGroup.defaultCurrency;
+            }
+            if (activeGroup.settleCurrency) {
+                document.getElementById('edit-group-settle-currency').value = activeGroup.settleCurrency;
+            }
             editGroupModal.classList.add('active');
         });
 
         document.getElementById('save-edit-group-btn').addEventListener('click', async () => {
             const activeGroup = getActiveGroup();
             const newName = document.getElementById('edit-group-name').value.trim();
+            const defaultCur = document.getElementById('edit-group-default-currency').value;
+            const settleCur = document.getElementById('edit-group-settle-currency').value;
+
             if (newName && newName !== "") {
-                await updateGroup(activeGroup.id, newName);
+                await updateGroup(activeGroup.id, newName, {
+                    defaultCurrency: defaultCur,
+                    settleCurrency: settleCur
+                });
                 editGroupModal.classList.remove('active');
             }
         });

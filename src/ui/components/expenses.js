@@ -172,7 +172,8 @@ export function resetExpenseForm() {
     document.getElementById('expense-modal-title').textContent = 'Add Expense';
     document.getElementById('expense-desc').value = '';
     document.getElementById('expense-amount').value = '';
-    document.getElementById('expense-currency').value = 'USD';
+    const activeGroup = getActiveGroup();
+    document.getElementById('expense-currency').value = activeGroup.defaultCurrency || 'USD';
 
     togglePayerMode('single');
     updatePayerDropdown();

@@ -12,16 +12,23 @@ export function registerRenderCallback(cb) {
     onStateChanged = cb;
 }
 
-export async function createNewGroup(name) {
+export async function createNewGroup(name, options = {}) {
     const roomCode = generateRoomCode();
     const newGroup = {
         id: roomCode,
         name: name,
-        people: [],
+        people: [{
+            id: 'p_' + Date.now(),
+            name: currentUser ? currentUser.displayName : 'Anonymous',
+            userId: currentUser ? currentUser.uid : myUserId,
+            venmoUsername: ''
+        }],
         expenses: [],
         creatorId: currentUser ? currentUser.uid : myUserId,
         creatorName: currentUser ? currentUser.displayName : 'Anonymous',
         creatorEmail: currentUser ? currentUser.email : null,
+        defaultCurrency: options?.defaultCurrency || 'USD',
+        settleCurrency: options?.settleCurrency || 'USD',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -99,8 +106,12 @@ export async function syncUserGroups(uid) {
         });
 }
 
-export async function updateGroup(groupId, newName) {
-    await db.collection('groups').doc(groupId).update({ name: newName });
+export async function updateGroup(groupId, newName, options = {}) {
+    const updateData = { name: newName };
+    if (options.defaultCurrency) updateData.defaultCurrency = options.defaultCurrency;
+    if (options.settleCurrency) updateData.settleCurrency = options.settleCurrency;
+
+    await db.collection('groups').doc(groupId).update(updateData);
 }
 
 export async function deleteGroup(groupId) {

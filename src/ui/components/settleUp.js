@@ -23,6 +23,9 @@ export function initSettleUpUI(renderAll) {
                 const activeGroup = getActiveGroup();
                 const balances = calculateBalances(activeGroup);
 
+                // Allow re-initialization from group defaults on group switch
+                window._settleModeInitialized = false;
+
                 fetchExchangeRate(() => {
                     renderAll();
                 });
@@ -256,6 +259,13 @@ export function renderBalances() {
 
 export function renderSettleUp() {
     const activeGroup = getActiveGroup();
+
+    // Set default settle mode from group settings if not already explicitly changed in this session
+    if (activeGroup.settleCurrency && !window._settleModeInitialized) {
+        settleCurrencyMode = activeGroup.settleCurrency;
+        window._settleModeInitialized = true;
+    }
+
     const container = document.getElementById('settle-results-container');
     if (!container) return;
 
