@@ -618,6 +618,33 @@ h2 {
     transform: scale(1);
 }
 
+/* Custom Dialog Modal Enhancements */
+#custom-dialog-modal .modal-content {
+    background: rgba(30, 41, 59, 0.8) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+}
+
+#dialog-icon {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal.active #dialog-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+#dialog-title {
+    font-weight: 800 !important;
+    letter-spacing: -0.02em;
+}
+
+#dialog-message {
+    font-size: 1.05rem;
+    opacity: 0.9;
+}
+
 .modal-content.large {
     max-width: 700px;
 }

@@ -16,7 +16,7 @@ export function calculateBalances(activeGroup, ignoreSettlements = false) {
 
     // Calculate per expense
     activeGroup.expenses.forEach(e => {
-        if (ignoreSettlements && e.id && e.id.startsWith('set_')) return;
+        if (ignoreSettlements && (e.isSettlement || (e.id && e.id.startsWith('set_')))) return;
 
         const amount = Number(e.amount) || 0;
         const cur = e.currency || 'USD';

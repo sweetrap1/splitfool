@@ -5,6 +5,7 @@ import { getActiveGroup, currentUser, isGroupAdmin } from '../../state.js';
 import { CURRENCY_NAMES, formatMoney, cachedExchangeRates, fetchExchangeRate, TOP_CURRENCIES } from '../../utils/currency.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { updateGroupLock, saveGroupState } from '../../api/groups.js';
+import { showConfirm } from '../../utils/dialogs.js';
 
 let settleCurrencyMode = 'USD'; // Default to USD
 let manualExchangeRate = null;
@@ -54,6 +55,23 @@ export function initSettleUpUI(renderAll) {
             alert("Failed to update group lock: " + e.message);
         }
     };
+
+    window.unmarkSettle = async (settlementId) => {
+        const activeGroup = getActiveGroup();
+        const settlement = activeGroup.expenses.find(e => e.id === settlementId);
+        if (!settlement) return;
+
+        const confirmed = await showConfirm(
+            'Remove Payment?',
+            `Are you sure you want to remove this recorded payment of ${formatMoney(settlement.amount, settlement.currency)}?`,
+            { danger: true, confirmText: 'Remove', icon: 'fa-trash-can' }
+        );
+        if (!confirmed) return;
+
+        activeGroup.expenses = activeGroup.expenses.filter(e => e.id !== settlementId);
+        await saveGroupState(activeGroup);
+        renderAll();
+    };
 }
 
 // Helper to determine which currency pair to override
@@ -85,7 +103,12 @@ window.recordManualSettle = async (fromId, toId, amount, currency) => {
     const debtor = activeGroup.people.find(p => p.id === fromId);
     const creditor = activeGroup.people.find(p => p.id === toId);
 
-    if (!confirm(`Record a payment of ${formatMoney(amount, currency)} from ${debtor?.name} to ${creditor?.name}?`)) return;
+    const confirmed = await showConfirm(
+        'Record Payment?',
+        `Confirm that ${formatMoney(amount, currency)} has been paid from ${debtor?.name} to ${creditor?.name}.`,
+        { confirmText: 'Mark Paid', icon: 'fa-check-circle' }
+    );
+    if (!confirmed) return;
 
     const settlement = {
         id: 'set_' + Date.now(),
@@ -370,6 +393,8 @@ export function renderSettleUp() {
 
     let allTransactions = [];
     if (targetCur === 'separate') {
+        // We still simplify per-currency in separate mode, which is less stable if payments are recorded,
+        // but stable simplification across multiple currencies is much more complex.
         const curs = new Set();
         Object.values(balances).forEach(b => Object.keys(b).forEach(c => curs.add(c)));
         curs.forEach(c => {
@@ -377,11 +402,14 @@ export function renderSettleUp() {
             txs.forEach(t => allTransactions.push({ ...t, currency: c }));
         });
     } else {
-        const simplifiedBalances = {};
-        Object.keys(balances).forEach(pId => {
+        // STABLE SIMPLIFICATION:
+        // 1. Calculate base balances (ignore settlements)
+        const baseBalances = calculateBalances(activeGroup, true);
+        const simplifiedBaseBalances = {};
+        Object.keys(baseBalances).forEach(pId => {
             let total = 0;
-            Object.keys(balances[pId]).forEach(cur => {
-                const amt = balances[pId][cur];
+            Object.keys(baseBalances[pId]).forEach(cur => {
+                const amt = baseBalances[pId][cur];
                 if (cur === targetCur) {
                     total += amt;
                 } else {
@@ -396,11 +424,47 @@ export function renderSettleUp() {
                     total += amt * curToTargetRate;
                 }
             });
-            simplifiedBalances[pId] = { [targetCur]: total };
+            simplifiedBaseBalances[pId] = { [targetCur]: total };
         });
-        finalBalances = simplifiedBalances;
-        allTransactions = simplifyDebts(finalBalances, targetCur);
+
+        // 2. Get the "Target Plan" from base balances
+        allTransactions = simplifyDebts(simplifiedBaseBalances, targetCur);
         allTransactions.forEach(t => t.currency = targetCur);
+
+        // 3. Subtract all existing settlements from this fixed plan
+        const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement);
+        settlements.forEach(s => {
+            const sCur = s.currency || 'USD';
+            let sAmountInTarget = Number(s.amount) || 0;
+
+            if (sCur !== targetCur) {
+                let curToTargetRate = 1;
+                if (manualExchangeRate && sCur === sourceCur) {
+                    curToTargetRate = manualExchangeRate;
+                } else if (cachedExchangeRates) {
+                    const curInUsd = sCur === 'USD' ? 1 : (1 / (cachedExchangeRates[sCur] || 1));
+                    const targetRate = targetCur === 'USD' ? 1 : (cachedExchangeRates[targetCur] || 1);
+                    curToTargetRate = curInUsd * targetRate;
+                }
+                sAmountInTarget *= curToTargetRate;
+            }
+
+            // Find matching transaction (payer -> creditor)
+            // Note: In simplifyDebts result, debtor is 'from', creditor is 'to'
+            const debtorId = s.payerId || (s.payers && s.payers[0]?.personId);
+            const creditorId = s.participants && s.participants[0]?.personId;
+
+            if (debtorId && creditorId) {
+                const tx = allTransactions.find(t => t.from === debtorId && t.to === creditorId);
+                if (tx) {
+                    tx.amount -= sAmountInTarget;
+                }
+            }
+        });
+
+        // 4. Filter out settled items
+        allTransactions = allTransactions.filter(t => t.amount > 0.005);
+        finalBalances = simplifiedBaseBalances; // For UI consistency
     }
 
     let resultsHtml = '';
@@ -438,7 +502,10 @@ export function renderSettleUp() {
             const debtorName = debtor?.name || 'Unknown';
             const venmoUsername = creditor?.venmoUsername;
             const cleanVenmo = venmoUsername ? venmoUsername.replace('@', '') : null;
-            const venmoLink = cleanVenmo ? `https://venmo.com/?tx=pay&txn=pay&audience=private&recipients=${cleanVenmo}&amount=${t.amount.toFixed(2)}&note=Trip%20Settlement` : null;
+            const groupName = activeGroup.name || 'Trip';
+            const venmoLink = cleanVenmo ? `https://venmo.com/?tx=pay&txn=pay&audience=private&recipients=${cleanVenmo}&amount=${t.amount.toFixed(2)}&note=${encodeURIComponent(groupName + ' Settlement')}` : null;
+
+            const isDebtorMe = currentUser && debtor?.userId === currentUser.uid;
 
             return `
                             <div class="debtor-row" style="padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03);">
@@ -452,10 +519,15 @@ export function renderSettleUp() {
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 8px;">
-                                    ${venmoLink ? `
-                                        <a href="${venmoLink}" target="_blank" class="btn sm" style="background: #3d95ce; color: white; display: inline-flex; align-items: center; gap: 4px; font-weight: bold;">
-                                            Pay/Venmo
-                                        </a>` : ''
+                                    ${isDebtorMe ? `
+                                        ${venmoLink ? `
+                                            <a href="${venmoLink}" target="_blank" class="btn sm" style="text-decoration: none; background: #3d95ce; color: white; display: inline-flex; align-items: center; gap: 4px; font-weight: bold;">
+                                                Pay
+                                            </a>` : `
+                                            <span class="btn sm disabled" style="background: var(--bg-hover); opacity: 0.5; color: var(--text-muted); cursor: not-allowed; display: inline-flex; align-items: center; gap: 4px; font-weight: bold;" title="Creditor has no Venmo set">
+                                                Pay
+                                            </span>`
+                    }` : ''
                 }
                                     <button onclick="recordManualSettle('${t.from}', '${t.to}', ${t.amount}, '${t.currency}')" class="btn outline sm">
                                         Mark Paid
@@ -501,7 +573,30 @@ export function renderSettleUp() {
         ` + resultsHtml;
     }
 
-    container.innerHTML = adminLockHtml + resultsHtml;
+    const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement);
+    let settlementsHtml = '';
+    if (settlements.length > 0) {
+        settlementsHtml = `
+            <div class="settlements-history" style="margin-top: 2rem; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 1.5rem;">
+                <h4 style="margin-bottom: 12px; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Recent Settlements</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    ${settlements.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(s => `
+                        <div class="card" style="padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);">
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">${escapeHTML(s.description)}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">${formatMoney(s.amount, s.currency)} • ${new Date(s.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <button onclick="unmarkSettle('${s.id}')" class="btn sm outline danger" style="padding: 4px 12px; font-size: 0.75rem;">
+                                Unmark
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = adminLockHtml + resultsHtml + settlementsHtml;
     renderMemberBreakdown(activeGroup, balances, targetCur, manualExchangeRate, liveRate, sourceCur);
 }
 
