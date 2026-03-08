@@ -1,155 +1,27 @@
 // Settle Up UI component
 
-import { calculateBalances, simplifyDebts } from '../../utils/math.js';
+import { calculateBalances, simplifyDebts, calculateDirectDebts } from '../../utils/math.js';
 import { getActiveGroup, currentUser, isGroupAdmin } from '../../state.js';
 import { CURRENCY_NAMES, formatMoney, cachedExchangeRates, fetchExchangeRate, TOP_CURRENCIES } from '../../utils/currency.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { updateGroupLock, saveGroupState } from '../../api/groups.js';
 import { showConfirm } from '../../utils/dialogs.js';
 
-/**
- * LOCAL implementation of calculateDirectDebts (inlined to avoid ES module cache issues).
- * Two-pass: builds pairwise debts from expenses, then subtracts settlements.
- */
-function calculateDirectDebts(activeGroup, targetCurrency = null, exchangeRates = null) {
-    if (!activeGroup || !activeGroup.people || !activeGroup.expenses) return [];
-
-    const pairDebts = {};
-
-    const addDebt = (fromId, toId, amount, cur) => {
-        if (!fromId || !toId || fromId === toId || amount === 0) return;
-        // For negative amounts (refunds), reverse the direction
-        if (amount < 0) { addDebt(toId, fromId, -amount, cur); return; }
-        const [p1, p2] = [fromId, toId].sort();
-        const sign = (p1 === fromId) ? 1 : -1;
-        if (!pairDebts[p1]) pairDebts[p1] = {};
-        if (!pairDebts[p1][p2]) pairDebts[p1][p2] = {};
-        if (!pairDebts[p1][p2][cur]) pairDebts[p1][p2][cur] = 0;
-        pairDebts[p1][p2][cur] += (amount * sign);
-    };
-
-    const reduceDebt = (fromId, toId, amount, cur) => {
-        if (!fromId || !toId || fromId === toId || amount <= 0) return;
-        const [p1, p2] = [fromId, toId].sort();
-        const sign = (p1 === fromId) ? 1 : -1;
-        if (!pairDebts[p1]) pairDebts[p1] = {};
-        if (!pairDebts[p1][p2]) pairDebts[p1][p2] = {};
-        if (!pairDebts[p1][p2][cur]) pairDebts[p1][p2][cur] = 0;
-        pairDebts[p1][p2][cur] -= (amount * sign);
-    };
-
-    // PASS 1: Build raw debts from regular expenses
-    activeGroup.expenses.forEach(e => {
-        const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
-        if (isSettlement) return;
-
-        const totalAmount = Number(e.amount) || 0;
-        const cur = e.currency || 'USD';
-        // NOTE: Do NOT skip negative amounts — those are refunds that must be processed
-        if (totalAmount === 0 || !e.participants || !e.participants.length) return;
-
-        const payers = [];
-        if (e.payers && e.payers.length > 0) {
-            e.payers.forEach(p => payers.push({ id: p.personId, amount: Number(p.amount) || 0 }));
-        } else if (e.payerId || e.paidBy) {
-            payers.push({ id: e.payerId || e.paidBy, amount: totalAmount });
-        }
-        if (!payers.length) return;
-
-        let totalShares = 0;
-        if (e.splitType === 'shares') {
-            totalShares = e.participants.reduce((sum, p) => sum + (Number(p.share) || 0), 0);
-        }
-
-        e.participants.forEach(p => {
-            let debt = 0;
-            const pShare = Number(p.share) || 0;
-            if (e.splitType === 'equal' || !e.splitType) {
-                debt = totalAmount / Math.max(1, e.participants.length);
-            } else if (e.splitType === 'exact' || e.splitType === 'paid_for') {
-                debt = pShare;
-            } else if (e.splitType === 'percent') {
-                debt = (totalAmount * pShare) / 100;
-            } else if (e.splitType === 'shares') {
-                if (totalShares !== 0) debt = totalAmount * (pShare / totalShares);
-            }
-            // NOTE: Do NOT skip debt === 0, and allow negative debt (refund credit)
-            if (debt === 0) return;
-
-            payers.forEach(payer => {
-                if (p.personId === payer.id) return;
-                const shareOfPayer = debt * (payer.amount / totalAmount);
-                if (Math.abs(shareOfPayer) > 0.001) addDebt(p.personId, payer.id, shareOfPayer, cur);
-            });
-        });
-    });
-
-    // PASS 2: Subtract settlements directly from pairwise debts
-    activeGroup.expenses.forEach(e => {
-        const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
-        if (!isSettlement) return;
-
-        const amount = Number(e.amount) || 0;
-        const cur = e.currency || 'USD';
-        if (amount <= 0) return;
-
-        const fromId = e.payerId || (e.payers && e.payers[0]?.personId);
-        const toId = e.participants && e.participants[0]?.personId;
-        if (fromId && toId) reduceDebt(fromId, toId, amount, cur);
-    });
-
-    const rawTransactions = [];
-    Object.keys(pairDebts).forEach(p1 => {
-        Object.keys(pairDebts[p1]).forEach(p2 => {
-            Object.keys(pairDebts[p1][p2]).forEach(cur => {
-                const net = pairDebts[p1][p2][cur];
-                if (Math.abs(net) < 0.005) return;
-                if (net > 0) {
-                    rawTransactions.push({ from: p1, to: p2, amount: net, currency: cur });
-                } else {
-                    rawTransactions.push({ from: p2, to: p1, amount: Math.abs(net), currency: cur });
-                }
-            });
-        });
-    });
-
-    if (targetCurrency && targetCurrency !== 'separate') {
-        const mergedDebts = {};
-        rawTransactions.forEach(tx => {
-            let amount = tx.amount;
-            if (tx.currency !== targetCurrency && exchangeRates) {
-                const fromInUsd = tx.currency === 'USD' ? 1 : (1 / (exchangeRates[tx.currency] || 1));
-                const targetRate = targetCurrency === 'USD' ? 1 : (exchangeRates[targetCurrency] || 1);
-                amount *= (fromInUsd * targetRate);
-            }
-            const [p1, p2] = [tx.from, tx.to].sort();
-            const sign = (p1 === tx.from) ? 1 : -1;
-            if (!mergedDebts[p1]) mergedDebts[p1] = {};
-            if (!mergedDebts[p1][p2]) mergedDebts[p1][p2] = 0;
-            mergedDebts[p1][p2] += (amount * sign);
-        });
-        const finalTransactions = [];
-        Object.keys(mergedDebts).forEach(p1 => {
-            Object.keys(mergedDebts[p1]).forEach(p2 => {
-                const net = mergedDebts[p1][p2];
-                if (Math.abs(net) < 0.01) return;
-                if (net > 0) {
-                    finalTransactions.push({ from: p1, to: p2, amount: Math.round(net * 100) / 100, currency: targetCurrency });
-                } else {
-                    finalTransactions.push({ from: p2, to: p1, amount: Math.round(Math.abs(net) * 100) / 100, currency: targetCurrency });
-                }
-            });
-        });
-        return finalTransactions;
-    }
-
-    rawTransactions.forEach(t => t.amount = Math.round(t.amount * 100) / 100);
-    return rawTransactions;
-}
+// calculateDirectDebts is imported from ../../utils/math.js — single source of truth.
 
 let settleCurrencyMode = 'USD';
 let manualExchangeRate = null;
 let shouldSimplify = localStorage.getItem('splitfool_simplify_debts') !== 'false';
+
+/**
+ * Call this whenever the active group is switched so the settle currency
+ * mode resets to the new group's default instead of carrying over.
+ */
+export function resetSettleModeForGroup(group) {
+    settleCurrencyMode = group?.settleCurrency || 'USD';
+    manualExchangeRate = null;
+    window._settleModeInitialized = true; // Prevent renderSettleUp from overwriting on first render
+}
 
 export function initSettleUpUI(renderAll) {
     const modeSelect = document.getElementById('settle-mode');
@@ -265,7 +137,7 @@ window.recordManualSettle = async (fromId, toId, amount, currency) => {
     if (!confirmed) return;
 
     const settlement = {
-        id: 'set_' + Date.now(),
+        id: 'set_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
         description: `Payment to ${creditor?.name}`,
         amount: amount,
         currency: currency,
@@ -346,13 +218,29 @@ export function renderBalances() {
         const transactions = [];
         activeGroup.expenses.forEach(e => {
             const cur = e.currency || 'USD';
+            const eAmount = Number(e.amount) || 0;
             const payer = e.payers?.find(pay => pay.personId === p.id);
             const legacyPayer = e.payerId === p.id || e.paidBy === p.id;
             const participant = e.participants?.find(part => part.personId === p.id);
 
             if (payer || (legacyPayer && !e.payers) || participant) {
-                const paid = payer ? Number(payer.amount) : (legacyPayer && !e.payers ? Number(e.amount) : 0);
-                const owed = participant ? Number(participant.share || participant.amount || participant.exactAmount) : 0;
+                const paid = payer ? Number(payer.amount) : (legacyPayer && !e.payers ? eAmount : 0);
+
+                // Convert participant.share to actual dollar amount based on split type
+                let owed = 0;
+                if (participant) {
+                    const rawShare = Number(participant.share || participant.amount || participant.exactAmount) || 0;
+                    if (e.splitType === 'percent') {
+                        owed = (eAmount * rawShare) / 100;
+                    } else if (e.splitType === 'shares') {
+                        const totalShares = (e.participants || []).reduce((s, pt) => s + (Number(pt.share) || 0), 0);
+                        owed = totalShares > 0 ? eAmount * (rawShare / totalShares) : 0;
+                    } else {
+                        // equal, exact, paid_for — share is already in dollars
+                        owed = rawShare;
+                    }
+                }
+
                 const net = paid - owed;
 
                 if (Math.abs(net) > 0.005) {
@@ -604,7 +492,7 @@ export function renderSettleUp() {
         } else {
             // For Direct mode, we use the native settlement handling in calculateDirectDebts
             // because it's more robust for pairwise connections.
-            allTransactions = calculateDirectDebts(activeGroup, targetCur, cachedExchangeRates, true);
+            allTransactions = calculateDirectDebts(activeGroup, targetCur, cachedExchangeRates);
         }
         allTransactions.forEach(t => t.currency = targetCur);
 
@@ -633,9 +521,17 @@ export function renderSettleUp() {
                 const creditorId = s.participants && s.participants[0]?.personId;
 
                 if (debtorId && creditorId) {
-                    const tx = allTransactions.find(t => t.from === debtorId && t.to === creditorId);
+                    // Check both directions — the simplified plan may have assigned the pair
+                    // in either order depending on who came out net-positive.
+                    let tx = allTransactions.find(t => t.from === debtorId && t.to === creditorId);
                     if (tx) {
                         tx.amount -= sAmountInTarget;
+                    } else {
+                        // Reversed: the debtor is actually the creditor in the simplified plan
+                        tx = allTransactions.find(t => t.from === creditorId && t.to === debtorId);
+                        if (tx) {
+                            tx.amount -= sAmountInTarget;
+                        }
                     }
                 }
             });
@@ -876,7 +772,16 @@ function renderMemberBreakdown(activeGroup, balances, targetCur, manualExchangeR
 
             const participant = (e.participants || e.paidFor)?.find(part => part.personId === p.id);
             if (participant) {
-                totals.owed[cur] += Number(participant.share || participant.amount || participant.exactAmount) || 0;
+                const eAmt = Number(e.amount) || 0;
+                const rawShare = Number(participant.share || participant.amount || participant.exactAmount) || 0;
+                let owedAmt = rawShare;
+                if (e.splitType === 'percent') {
+                    owedAmt = (eAmt * rawShare) / 100;
+                } else if (e.splitType === 'shares') {
+                    const totalShares = (e.participants || []).reduce((s, pt) => s + (Number(pt.share) || 0), 0);
+                    owedAmt = totalShares > 0 ? eAmt * (rawShare / totalShares) : 0;
+                }
+                totals.owed[cur] += owedAmt;
             }
         });
 

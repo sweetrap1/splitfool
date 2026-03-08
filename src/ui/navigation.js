@@ -1,6 +1,7 @@
 // Navigation and Global UI components
-import { state, isGroupAdmin, getActiveGroup } from '../state.js';
+import { state, isGroupAdmin, getActiveGroup, setActiveGroup } from '../state.js';
 import { saveGroupState, deleteGroup } from '../api/groups.js';
+import { resetSettleModeForGroup } from './components/settleUp.js';
 
 export function initNavigation() {
     // Navigation Logic
@@ -63,10 +64,22 @@ export function renderGroupSelector(onGroupChange) {
         select.appendChild(option);
     });
 
-    // Final sync: if state says we have an active group that IS in the list, 
+    // Final sync: if state says we have an active group that IS in the list,
     // make sure the DOM matches.
     if (currentActiveId && select.value !== currentActiveId) {
         select.value = currentActiveId;
+    }
+
+    // Reset settle mode when group changes (only attach listener once per element)
+    if (!select._groupSwitchListenerAttached) {
+        select._groupSwitchListenerAttached = true;
+        select.addEventListener('change', (e) => {
+            const newGroupId = e.target.value;
+            setActiveGroup(newGroupId);
+            const newGroup = state.groups.find(g => g.id === newGroupId);
+            resetSettleModeForGroup(newGroup);
+            if (onGroupChange) onGroupChange();
+        });
     }
 }
 

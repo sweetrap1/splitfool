@@ -138,7 +138,7 @@ export async function saveGroupState(activeGroup) {
             }
         }
 
-        db.runTransaction(async (transaction) => {
+        return db.runTransaction(async (transaction) => {
             const groupRef = db.collection('groups').doc(activeGroup.id);
             const doc = await transaction.get(groupRef);
 

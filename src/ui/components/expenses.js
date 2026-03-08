@@ -7,8 +7,10 @@ import { showConfirm, showAlert } from '../../utils/dialogs.js';
 
 let currentPayerMode = 'single'; // 'single' or 'multiple'
 let currentSplitMode = 'equal'; // equal, exact, percent, shares, paid_for
+let _renderAll = () => {}; // Captured from initExpensesUI so deleteExpenseUI can use it
 
 export function initExpensesUI(renderAll) {
+    _renderAll = renderAll; // Capture so module-level functions can call it
     const addExpenseBtn = document.getElementById('add-expense-btn');
     const expenseModal = document.getElementById('expense-modal');
 
@@ -262,6 +264,15 @@ function renderMultiplePayers() {
     const container = document.getElementById('multiple-payers-list');
     if (!container || !activeGroup || !activeGroup.people) return;
 
+    // Use the actual selected expense currency, not a hardcoded '$'
+    const currencyCode = document.getElementById('expense-currency')?.value || 'USD';
+    let currencySymbol = '$';
+    try {
+        const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode })
+            .formatToParts(0);
+        currencySymbol = parts.find(p => p.type === 'currency')?.value || currencyCode;
+    } catch (e) { currencySymbol = currencyCode; }
+
     const currentValues = {};
     container.querySelectorAll('.multi-payer-input').forEach(input => {
         const id = input.id.replace('mp_', '');
@@ -281,7 +292,7 @@ function renderMultiplePayers() {
             </div>
             <div class="participant-input-container">
                 <input type="number" id="mp_${safeId}" class="multi-payer-input" placeholder="0" step="0.01" value="${prevValue}" oninput="updateMultiplePayersSummary()">
-                <span class="split-unit">$</span>
+                <span class="split-unit">${currencySymbol}</span>
             </div>
         </div>
         `;
@@ -623,6 +634,8 @@ function deleteExpenseUI(id) {
                 const list = document.getElementById('expense-list');
                 const item = document.getElementById(`exp_${id}`);
                 if (item) item.remove();
+                // Re-render all tabs so Balances and Settle Up reflect the deletion
+                _renderAll();
             });
         }
     });

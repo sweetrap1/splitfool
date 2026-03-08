@@ -154,46 +154,70 @@ export function simplifyDebts(balances, currency) {
 
 /**
  * Calculates direct "traditional" debts between people.
- * Netting is still applied between any two specific people (A->B and B->A).
+ * Netting is applied per-pair (A->B and B->A offset each other).
+ *
+ * Negative-amount expenses (refunds/credits) are handled by reversing
+ * the debt direction: the payer becomes the receiver and vice-versa.
+ *
+ * Two-pass approach:
+ *   Pass 1 – build pairwise debts from regular expenses (including refunds).
+ *   Pass 2 – subtract recorded settlements from those pairwise debts.
  */
 export function calculateDirectDebts(activeGroup, targetCurrency = null, exchangeRates = null) {
     if (!activeGroup || !activeGroup.people || !activeGroup.expenses) return [];
 
-    // Map to store nets: { [personA_id]: { [personB_id]: { [currency]: amount } } }
-    // Stored in SORTED key order. Positive amount means p1 (smaller id) owes p2 (larger id).
+    // Map: { [p1_id]: { [p2_id]: { [currency]: net } } }
+    // Keys are always sorted so p1 < p2 lexicographically.
+    // Positive net  → p1 owes p2
+    // Negative net  → p2 owes p1
     const pairDebts = {};
 
+    /**
+     * Record that `fromId` owes `toId` `amount` in `cur`.
+     * Negative amounts are refunds: flip direction and call recursively.
+     * Zero amounts are ignored.
+     */
     const addDebt = (fromId, toId, amount, cur) => {
-        if (!fromId || !toId || fromId === toId || amount <= 0) return;
+        if (!fromId || !toId || fromId === toId || amount === 0) return;
+        if (amount < 0) {
+            // Refund/credit: the money flows back the other way
+            addDebt(toId, fromId, -amount, cur);
+            return;
+        }
         const [p1, p2] = [fromId, toId].sort();
-        const sign = (p1 === fromId) ? 1 : -1; // +1 means fromId (p1) owes toId (p2)
+        const sign = (p1 === fromId) ? 1 : -1;
         if (!pairDebts[p1]) pairDebts[p1] = {};
         if (!pairDebts[p1][p2]) pairDebts[p1][p2] = {};
         if (!pairDebts[p1][p2][cur]) pairDebts[p1][p2][cur] = 0;
         pairDebts[p1][p2][cur] += (amount * sign);
     };
 
+    /**
+     * Record that `fromId` has paid `toId` `amount` in `cur`
+     * (reduces the existing pairwise debt in that direction).
+     */
     const reduceDebt = (fromId, toId, amount, cur) => {
-        // A payment from fromId to toId reduces the debt fromId owes toId
         if (!fromId || !toId || fromId === toId || amount <= 0) return;
         const [p1, p2] = [fromId, toId].sort();
         const sign = (p1 === fromId) ? 1 : -1;
         if (!pairDebts[p1]) pairDebts[p1] = {};
         if (!pairDebts[p1][p2]) pairDebts[p1][p2] = {};
         if (!pairDebts[p1][p2][cur]) pairDebts[p1][p2][cur] = 0;
-        // Subtracting the sign removes the debt
         pairDebts[p1][p2][cur] -= (amount * sign);
     };
 
-    // --- PASS 1: Add all regular expenses ---
+    // ── PASS 1: build raw pairwise debts from every non-settlement expense ──
     activeGroup.expenses.forEach(e => {
         const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
-        if (isSettlement) return; // Handle in pass 2
+        if (isSettlement) return;
 
         const totalAmount = Number(e.amount) || 0;
         const cur = e.currency || 'USD';
-        if (totalAmount <= 0 || !e.participants || !e.participants.length) return;
 
+        // Skip zero-amount expenses only; negative amounts are valid refunds
+        if (totalAmount === 0 || !e.participants || !e.participants.length) return;
+
+        // Build payer list (support multi-payer and legacy single-payer)
         const payers = [];
         if (e.payers && e.payers.length > 0) {
             e.payers.forEach(p => payers.push({ id: p.personId, amount: Number(p.amount) || 0 }));
@@ -210,6 +234,7 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
         e.participants.forEach(p => {
             let debt = 0;
             const pShare = Number(p.share) || 0;
+
             if (e.splitType === 'equal' || !e.splitType) {
                 debt = totalAmount / Math.max(1, e.participants.length);
             } else if (e.splitType === 'exact' || e.splitType === 'paid_for') {
@@ -217,21 +242,23 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
             } else if (e.splitType === 'percent') {
                 debt = (totalAmount * pShare) / 100;
             } else if (e.splitType === 'shares') {
-                if (totalShares > 0) debt = totalAmount * (pShare / totalShares);
+                if (totalShares !== 0) debt = totalAmount * (pShare / totalShares);
             }
-            if (debt <= 0) return;
 
+            if (debt === 0) return;
+
+            // Each payer is owed their proportional share of this participant's portion
             payers.forEach(payer => {
-                if (p.personId === payer.id) return;
+                if (p.personId === payer.id) return; // Payer doesn't owe themselves
                 const shareOfPayer = debt * (payer.amount / totalAmount);
-                if (shareOfPayer > 0.001) {
+                if (Math.abs(shareOfPayer) > 0.001) {
                     addDebt(p.personId, payer.id, shareOfPayer, cur);
                 }
             });
         });
     });
 
-    // --- PASS 2: Subtract all settlements ---
+    // ── PASS 2: subtract all recorded settlements ──
     activeGroup.expenses.forEach(e => {
         const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
         if (!isSettlement) return;
@@ -240,7 +267,7 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
         const cur = e.currency || 'USD';
         if (amount <= 0) return;
 
-        // Settlement structure: payerId = person who paid, participants[0] = person who received
+        // Settlement: payerId paid, participants[0] received
         const fromId = e.payerId || (e.payers && e.payers[0]?.personId);
         const toId = e.participants && e.participants[0]?.personId;
         if (fromId && toId) {
@@ -248,13 +275,13 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
         }
     });
 
-    // Convert pairDebts into a list of transactions
+    // ── Convert pairDebts map into a flat transaction list ──
     const rawTransactions = [];
     Object.keys(pairDebts).forEach(p1 => {
         Object.keys(pairDebts[p1]).forEach(p2 => {
             Object.keys(pairDebts[p1][p2]).forEach(cur => {
                 const net = pairDebts[p1][p2][cur];
-                if (Math.abs(net) < 0.005) return;
+                if (Math.abs(net) < 0.005) return; // ignore sub-cent noise
                 if (net > 0) {
                     rawTransactions.push({ from: p1, to: p2, amount: net, currency: cur });
                 } else {
@@ -264,6 +291,7 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
         });
     });
 
+    // ── Optional: merge all currencies into a single target currency ──
     if (targetCurrency && targetCurrency !== 'separate') {
         const mergedDebts = {};
         rawTransactions.forEach(tx => {
@@ -298,4 +326,3 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
     rawTransactions.forEach(t => t.amount = Math.round(t.amount * 100) / 100);
     return rawTransactions;
 }
-
