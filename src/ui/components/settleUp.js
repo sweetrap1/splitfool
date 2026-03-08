@@ -7,8 +7,149 @@ import { escapeHTML } from '../../utils/helpers.js';
 import { updateGroupLock, saveGroupState } from '../../api/groups.js';
 import { showConfirm } from '../../utils/dialogs.js';
 
-let settleCurrencyMode = 'USD'; // Default to USD
+/**
+ * LOCAL implementation of calculateDirectDebts (inlined to avoid ES module cache issues).
+ * Two-pass: builds pairwise debts from expenses, then subtracts settlements.
+ */
+function calculateDirectDebts(activeGroup, targetCurrency = null, exchangeRates = null) {
+    if (!activeGroup || !activeGroup.people || !activeGroup.expenses) return [];
+
+    const pairDebts = {};
+
+    const addDebt = (fromId, toId, amount, cur) => {
+        if (!fromId || !toId || fromId === toId || amount === 0) return;
+        // For negative amounts (refunds), reverse the direction
+        if (amount < 0) { addDebt(toId, fromId, -amount, cur); return; }
+        const [p1, p2] = [fromId, toId].sort();
+        const sign = (p1 === fromId) ? 1 : -1;
+        if (!pairDebts[p1]) pairDebts[p1] = {};
+        if (!pairDebts[p1][p2]) pairDebts[p1][p2] = {};
+        if (!pairDebts[p1][p2][cur]) pairDebts[p1][p2][cur] = 0;
+        pairDebts[p1][p2][cur] += (amount * sign);
+    };
+
+    const reduceDebt = (fromId, toId, amount, cur) => {
+        if (!fromId || !toId || fromId === toId || amount <= 0) return;
+        const [p1, p2] = [fromId, toId].sort();
+        const sign = (p1 === fromId) ? 1 : -1;
+        if (!pairDebts[p1]) pairDebts[p1] = {};
+        if (!pairDebts[p1][p2]) pairDebts[p1][p2] = {};
+        if (!pairDebts[p1][p2][cur]) pairDebts[p1][p2][cur] = 0;
+        pairDebts[p1][p2][cur] -= (amount * sign);
+    };
+
+    // PASS 1: Build raw debts from regular expenses
+    activeGroup.expenses.forEach(e => {
+        const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
+        if (isSettlement) return;
+
+        const totalAmount = Number(e.amount) || 0;
+        const cur = e.currency || 'USD';
+        // NOTE: Do NOT skip negative amounts — those are refunds that must be processed
+        if (totalAmount === 0 || !e.participants || !e.participants.length) return;
+
+        const payers = [];
+        if (e.payers && e.payers.length > 0) {
+            e.payers.forEach(p => payers.push({ id: p.personId, amount: Number(p.amount) || 0 }));
+        } else if (e.payerId || e.paidBy) {
+            payers.push({ id: e.payerId || e.paidBy, amount: totalAmount });
+        }
+        if (!payers.length) return;
+
+        let totalShares = 0;
+        if (e.splitType === 'shares') {
+            totalShares = e.participants.reduce((sum, p) => sum + (Number(p.share) || 0), 0);
+        }
+
+        e.participants.forEach(p => {
+            let debt = 0;
+            const pShare = Number(p.share) || 0;
+            if (e.splitType === 'equal' || !e.splitType) {
+                debt = totalAmount / Math.max(1, e.participants.length);
+            } else if (e.splitType === 'exact' || e.splitType === 'paid_for') {
+                debt = pShare;
+            } else if (e.splitType === 'percent') {
+                debt = (totalAmount * pShare) / 100;
+            } else if (e.splitType === 'shares') {
+                if (totalShares !== 0) debt = totalAmount * (pShare / totalShares);
+            }
+            // NOTE: Do NOT skip debt === 0, and allow negative debt (refund credit)
+            if (debt === 0) return;
+
+            payers.forEach(payer => {
+                if (p.personId === payer.id) return;
+                const shareOfPayer = debt * (payer.amount / totalAmount);
+                if (Math.abs(shareOfPayer) > 0.001) addDebt(p.personId, payer.id, shareOfPayer, cur);
+            });
+        });
+    });
+
+    // PASS 2: Subtract settlements directly from pairwise debts
+    activeGroup.expenses.forEach(e => {
+        const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
+        if (!isSettlement) return;
+
+        const amount = Number(e.amount) || 0;
+        const cur = e.currency || 'USD';
+        if (amount <= 0) return;
+
+        const fromId = e.payerId || (e.payers && e.payers[0]?.personId);
+        const toId = e.participants && e.participants[0]?.personId;
+        if (fromId && toId) reduceDebt(fromId, toId, amount, cur);
+    });
+
+    const rawTransactions = [];
+    Object.keys(pairDebts).forEach(p1 => {
+        Object.keys(pairDebts[p1]).forEach(p2 => {
+            Object.keys(pairDebts[p1][p2]).forEach(cur => {
+                const net = pairDebts[p1][p2][cur];
+                if (Math.abs(net) < 0.005) return;
+                if (net > 0) {
+                    rawTransactions.push({ from: p1, to: p2, amount: net, currency: cur });
+                } else {
+                    rawTransactions.push({ from: p2, to: p1, amount: Math.abs(net), currency: cur });
+                }
+            });
+        });
+    });
+
+    if (targetCurrency && targetCurrency !== 'separate') {
+        const mergedDebts = {};
+        rawTransactions.forEach(tx => {
+            let amount = tx.amount;
+            if (tx.currency !== targetCurrency && exchangeRates) {
+                const fromInUsd = tx.currency === 'USD' ? 1 : (1 / (exchangeRates[tx.currency] || 1));
+                const targetRate = targetCurrency === 'USD' ? 1 : (exchangeRates[targetCurrency] || 1);
+                amount *= (fromInUsd * targetRate);
+            }
+            const [p1, p2] = [tx.from, tx.to].sort();
+            const sign = (p1 === tx.from) ? 1 : -1;
+            if (!mergedDebts[p1]) mergedDebts[p1] = {};
+            if (!mergedDebts[p1][p2]) mergedDebts[p1][p2] = 0;
+            mergedDebts[p1][p2] += (amount * sign);
+        });
+        const finalTransactions = [];
+        Object.keys(mergedDebts).forEach(p1 => {
+            Object.keys(mergedDebts[p1]).forEach(p2 => {
+                const net = mergedDebts[p1][p2];
+                if (Math.abs(net) < 0.01) return;
+                if (net > 0) {
+                    finalTransactions.push({ from: p1, to: p2, amount: Math.round(net * 100) / 100, currency: targetCurrency });
+                } else {
+                    finalTransactions.push({ from: p2, to: p1, amount: Math.round(Math.abs(net) * 100) / 100, currency: targetCurrency });
+                }
+            });
+        });
+        return finalTransactions;
+    }
+
+    rawTransactions.forEach(t => t.amount = Math.round(t.amount * 100) / 100);
+    return rawTransactions;
+}
+
+let settleCurrencyMode = 'USD';
 let manualExchangeRate = null;
+let shouldSimplify = localStorage.getItem('splitfool_simplify_debts') !== 'false';
 
 export function initSettleUpUI(renderAll) {
     const modeSelect = document.getElementById('settle-mode');
@@ -32,6 +173,16 @@ export function initSettleUpUI(renderAll) {
             } else {
                 renderAll();
             }
+        });
+    }
+
+    const simplifyToggle = document.getElementById('simplify-debts-toggle');
+    if (simplifyToggle) {
+        simplifyToggle.checked = shouldSimplify;
+        simplifyToggle.addEventListener('change', (e) => {
+            shouldSimplify = e.target.checked;
+            localStorage.setItem('splitfool_simplify_debts', shouldSimplify);
+            renderAll();
         });
     }
 
@@ -143,6 +294,11 @@ export function renderBalances() {
     const list = document.getElementById('balances-list');
     if (!list) return;
 
+    const titleEl = document.querySelector('#balances-tab h2');
+    if (titleEl && !titleEl.innerHTML.includes('Net')) {
+        titleEl.innerHTML = 'Personal Balances <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0;">(Net Total)</span>';
+    }
+
     const balances = calculateBalances(activeGroup);
     const people = activeGroup.people || [];
 
@@ -179,7 +335,7 @@ export function renderBalances() {
                 const bal = personBals[c];
                 const amountClass = bal > 0 ? 'positive' : 'negative';
                 const prefix = bal > 0 ? '+' : '';
-                return `<div class="amount ${amountClass}">${prefix}${formatMoney(bal, c)}</div>`;
+                return `<div class="amount ${amountClass}">${prefix}${formatMoney(bal, c)} <span style="font-size: 0.65rem; opacity: 0.7; font-weight: 500;">Net</span></div>`;
             }).join('');
         }
 
@@ -408,7 +564,12 @@ export function renderSettleUp() {
         const curs = new Set();
         Object.values(balances).forEach(b => Object.keys(b).forEach(c => curs.add(c)));
         curs.forEach(c => {
-            const txs = simplifyDebts(balances, c);
+            let txs = [];
+            if (shouldSimplify) {
+                txs = simplifyDebts(balances, c);
+            } else {
+                txs = calculateDirectDebts(activeGroup).filter(tx => tx.currency === c);
+            }
             txs.forEach(t => allTransactions.push({ ...t, currency: c }));
         });
     } else {
@@ -438,39 +599,47 @@ export function renderSettleUp() {
         });
 
         // 2. Get the "Target Plan" from base balances
-        allTransactions = simplifyDebts(simplifiedBaseBalances, targetCur);
+        if (shouldSimplify) {
+            allTransactions = simplifyDebts(simplifiedBaseBalances, targetCur);
+        } else {
+            // For Direct mode, we use the native settlement handling in calculateDirectDebts
+            // because it's more robust for pairwise connections.
+            allTransactions = calculateDirectDebts(activeGroup, targetCur, cachedExchangeRates, true);
+        }
         allTransactions.forEach(t => t.currency = targetCur);
 
-        // 3. Subtract all existing settlements from this fixed plan
-        const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement);
-        settlements.forEach(s => {
-            const sCur = s.currency || 'USD';
-            let sAmountInTarget = Number(s.amount) || 0;
+        // 3. Subtract all existing settlements from this fixed plan (Simplified mode only)
+        // Direct mode already handled them in the call above.
+        if (shouldSimplify) {
+            const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement);
+            settlements.forEach(s => {
+                const sCur = s.currency || 'USD';
+                let sAmountInTarget = Number(s.amount) || 0;
 
-            if (sCur !== targetCur) {
-                let curToTargetRate = 1;
-                if (manualExchangeRate && sCur === sourceCur) {
-                    curToTargetRate = manualExchangeRate;
-                } else if (cachedExchangeRates) {
-                    const curInUsd = sCur === 'USD' ? 1 : (1 / (cachedExchangeRates[sCur] || 1));
-                    const targetRate = targetCur === 'USD' ? 1 : (cachedExchangeRates[targetCur] || 1);
-                    curToTargetRate = curInUsd * targetRate;
+                if (sCur !== targetCur) {
+                    let curToTargetRate = 1;
+                    if (manualExchangeRate && sCur === sourceCur) {
+                        curToTargetRate = manualExchangeRate;
+                    } else if (cachedExchangeRates) {
+                        const curInUsd = sCur === 'USD' ? 1 : (1 / (cachedExchangeRates[sCur] || 1));
+                        const targetRate = targetCur === 'USD' ? 1 : (cachedExchangeRates[targetCur] || 1);
+                        curToTargetRate = curInUsd * targetRate;
+                    }
+                    sAmountInTarget *= curToTargetRate;
                 }
-                sAmountInTarget *= curToTargetRate;
-            }
 
-            // Find matching transaction (payer -> creditor)
-            // Note: In simplifyDebts result, debtor is 'from', creditor is 'to'
-            const debtorId = s.payerId || (s.payers && s.payers[0]?.personId);
-            const creditorId = s.participants && s.participants[0]?.personId;
+                // Find matching transaction (payer -> creditor)
+                const debtorId = s.payerId || (s.payers && s.payers[0]?.personId);
+                const creditorId = s.participants && s.participants[0]?.personId;
 
-            if (debtorId && creditorId) {
-                const tx = allTransactions.find(t => t.from === debtorId && t.to === creditorId);
-                if (tx) {
-                    tx.amount -= sAmountInTarget;
+                if (debtorId && creditorId) {
+                    const tx = allTransactions.find(t => t.from === debtorId && t.to === creditorId);
+                    if (tx) {
+                        tx.amount -= sAmountInTarget;
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // 4. Filter out settled items
         allTransactions = allTransactions.filter(t => t.amount > 0.005);
@@ -478,6 +647,49 @@ export function renderSettleUp() {
     }
 
     let resultsHtml = '';
+
+    if (currentUser && activeGroup.people && targetCur !== 'separate') {
+        const me = activeGroup.people.find(p => p.userId === currentUser.uid);
+        if (me) {
+            const myOwe = allTransactions.filter(t => t.from === me.id).reduce((sum, t) => sum + t.amount, 0);
+            const myLent = allTransactions.filter(t => t.to === me.id).reduce((sum, t) => sum + t.amount, 0);
+
+            // The absolute bottom line is the sum of what people owe you minus what you owe.
+            const myNet = myLent - myOwe;
+
+            resultsHtml += `
+                <div class="card" style="margin-bottom: 2rem; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); position: relative; overflow: hidden;">
+                    <div style="position: absolute; right: -20px; top: -20px; font-size: 5rem; opacity: 0.03; transform: rotate(15deg); color: var(--primary); pointer-events: none;">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <h3 style="margin-bottom: 1.25rem;"><i class="fa-solid fa-user-check" style="color: var(--primary);"></i> Your Settlement Summary</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; font-weight: 800;">Total You Owe</div>
+                            <div style="font-size: 1.3rem; font-weight: 800; color: var(--danger);">${formatMoney(myOwe, targetCur)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; font-weight: 800;">Total You Are Owed</div>
+                            <div style="font-size: 1.3rem; font-weight: 800; color: var(--success);">${formatMoney(myLent, targetCur)}</div>
+                        </div>
+                    </div>
+                    <div style="padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-weight: 700; color: var(--text-main); font-size: 1rem;">Your Net Balance:</div>
+                        <div style="font-size: 1.5rem; font-weight: 900; color: ${myNet >= 0.005 ? 'var(--success)' : (myNet < -0.005 ? 'var(--danger)' : 'var(--text-muted)')};">
+                            ${myNet > 0.005 ? '+' : ''}${formatMoney(myNet, targetCur)}
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px;">
+                        <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 4px;"></i>
+                        ${shouldSimplify ?
+                    `Debts are <b>simplified</b> to minimize payments. You only need to pay the net difference.` :
+                    `Showing <b>direct debts</b> (traditional). You'll see everyone you owe directly for each expense.`}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
 
     // Group by creditor
     const byCreditor = {};

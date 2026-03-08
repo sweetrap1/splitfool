@@ -192,6 +192,16 @@
                             </div>
                         </div>
                     </div>
+                    <div
+                        style="margin-top: 1.5rem; display: flex; align-items: center; justify-content: space-between; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                        <div class="toggle-group" id="simplify-toggle-container">
+                            <label class="switch">
+                                <input type="checkbox" id="simplify-debts-toggle">
+                                <span class="slider"></span>
+                            </label>
+                            <span class="toggle-label">Simplify Debts (Minimal Transactions)</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="settlement-breakdown" class="card hidden" style="margin-bottom: 2rem;">
@@ -643,7 +653,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
     <!-- User Application Logic as ES Module -->
-    <script type="module" src="src/main.js"></script>
+    <script>
+        // Cache-bust the main JS module the same way CSS is busted above
+        const _v = new Date().getTime();
+        document.write('<scr' + 'ipt type="module" src="src/main.js?v=' + _v + '"><\/scr' + 'ipt>');
+    </script>
 
 </body>
 
