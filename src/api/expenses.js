@@ -5,6 +5,9 @@ import { saveGroupState } from './groups.js';
 export async function addExpense(expenseData) {
     const activeGroup = getActiveGroup();
     if (!activeGroup.id) return;
+    if (!expenseData.createdAt) {
+        expenseData.createdAt = new Date().toISOString();
+    }
     activeGroup.expenses.push(expenseData);
     return saveGroupState(activeGroup);
 }

@@ -468,12 +468,23 @@ export function renderExpenses() {
     }
 
     if (activeExpenses.length === 0 && archivedExpenses.length === 0) {
-        list.innerHTML += '<p class="subtitle">No expenses added yet.</p>';
+        list.innerHTML += `
+            <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                <i class="fa-solid fa-receipt" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3; display: block;"></i>
+                <div style="font-weight: 600; margin-bottom: 0.4rem; color: var(--text-main);">No expenses yet</div>
+                <div style="font-size: 0.85rem;">Add your first expense to get started.</div>
+            </div>
+        `;
         return;
     }
 
     if (activeExpenses.length === 0) {
-        list.innerHTML += '<p class="subtitle" style="margin-bottom: 1rem;">No active expenses — all have been archived.</p>';
+        list.innerHTML += `
+            <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                <i class="fa-solid fa-check-circle" style="font-size: 2rem; margin-bottom: 0.75rem; opacity: 0.4; display: block; color: var(--success);"></i>
+                <div style="font-size: 0.9rem;">All expenses archived — start fresh below.</div>
+            </div>
+        `;
     }
 
     // Helper to build an expense card HTML
@@ -546,13 +557,22 @@ export function renderExpenses() {
         const archivedClass = isArchived ? ' expense-archived' : '';
         const archivedBadge = isArchived ? `<span style="font-size: 0.7rem; color: var(--text-muted); background: rgba(255,255,255,0.06); border-radius: 8px; padding: 2px 8px; margin-left: 6px; font-weight: 600; letter-spacing: 0.5px;"><i class="fa-solid fa-box-archive" style="margin-right: 3px;"></i>Archived</span>` : '';
 
+        let dateHtml = '';
+        if (e.createdAt) {
+            try {
+                const d = new Date(e.createdAt);
+                dateHtml = `<span style="font-size: 0.73rem; color: var(--text-muted); margin-left: auto; white-space: nowrap;">${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>`;
+            } catch (_) {}
+        }
+
         return `
             <div class="card expense-card${archivedClass}" id="exp_${safeId}">
                 <div class="expense-header">
                     <div style="flex:1; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
                         <h3>${safeDesc}</h3>${archivedBadge}
                     </div>
-                    <div class="amount">${symbol} ${e.amount.toFixed(2)}</div>
+                    ${dateHtml}
+                    <div class="amount" style="margin-left: 1rem;">${symbol} ${e.amount.toFixed(2)}</div>
                     <div class="expense-actions">
                         ${actionButtons}
                     </div>
@@ -573,10 +593,20 @@ export function renderExpenses() {
         const sortedArchived = [...archivedExpenses].sort((a, b) => b.id.localeCompare(a.id));
         const historyId = 'expense-history-body';
 
+        // Sum up total for all currencies in archive for toggle label
+        const archiveTotals = {};
+        sortedArchived.forEach(e => {
+            if (e.isSettlement) return;
+            const cur = e.currency || 'USD';
+            archiveTotals[cur] = (archiveTotals[cur] || 0) + (Number(e.amount) || 0);
+        });
+        const archiveTotalStr = Object.entries(archiveTotals)
+            .map(([c, a]) => `${c} ${a.toFixed(2)}`).join(' + ');
+
         const historyHtml = `
             <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 0.5rem;">
                 <button class="expense-history-toggle" id="expense-history-toggle" onclick="toggleExpenseHistory()" title="Toggle settled history">
-                    <span><i class="fa-solid fa-box-archive" style="margin-right: 8px; color: var(--text-muted);"></i>Settled History <span style="font-weight: 400; opacity: 0.7;">(${sortedArchived.length})</span></span>
+                    <span><i class="fa-solid fa-box-archive" style="margin-right: 8px; color: var(--text-muted);"></i>Settled History <span style="font-weight: 400; opacity: 0.7;">(${sortedArchived.length}${archiveTotalStr ? ' · ' + archiveTotalStr : ''})</span></span>
                     <i class="fa-solid fa-chevron-down toggle-chevron"></i>
                 </button>
                 <div class="expense-history-body" id="${historyId}">

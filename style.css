@@ -529,6 +529,38 @@ h2 {
     color: white;
 }
 
+/* Small button variant — used in Mark Paid, Unmark, Venmo, etc. */
+.btn.sm {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    gap: 0.35rem;
+}
+
+/* Outline button variant — transparent with border */
+.btn.outline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.btn.outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Danger outline — for Unmark-style destructive actions */
+.btn.outline.danger {
+    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.btn.outline.danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: var(--danger);
+}
+
 /* Modals */
 .modal {
     display: none;

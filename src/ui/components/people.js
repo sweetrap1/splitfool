@@ -67,7 +67,16 @@ export function renderPeople() {
         const isMe = state.currentUser && p.userId === state.currentUser.uid;
 
         let badgesHtml = '';
-        if (state.currentUser && !p.userId) {
+        if (isAdmin) {
+            // Admins always see clear claimed/unclaimed status for every member
+            if (isMe) {
+                badgesHtml = `<span class="me-badge">You</span>`;
+            } else if (p.userId) {
+                badgesHtml = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:700; color: var(--success); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); border-radius: 20px; padding: 2px 9px; letter-spacing: 0.3px;"><i class="fa-solid fa-link" style="font-size:0.65rem;"></i> Linked</span>`;
+            } else {
+                badgesHtml = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:700; color: var(--text-muted); background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.15); border-radius: 20px; padding: 2px 9px; letter-spacing: 0.3px;"><i class="fa-solid fa-link-slash" style="font-size:0.65rem;"></i> Unlinked</span>`;
+            }
+        } else if (state.currentUser && !p.userId) {
             const alreadyClaimedSomeone = activeGroup.people.some(person => person.userId === state.currentUser.uid);
             if (!alreadyClaimedSomeone) {
                 badgesHtml = `<button class="btn sm" style="padding: 2px 8px; font-size: 0.7rem; height: auto;" onclick="claimPersonUI('${p.id}')"><i class="fa-solid fa-hand"></i> Claim</button>`;
@@ -82,7 +91,6 @@ export function renderPeople() {
 
         const venmoBadge = p.venmoUsername ? `<div class="venmo-badge"><i class="fa-brands fa-venmo"></i> ${escapeHTML(p.venmoUsername)}</div>` : '';
 
-        const isAdmin = isGroupAdmin(activeGroup);
         const canEdit = isAdmin || isMe;
         let controlsHtml = '';
         if (canEdit) {

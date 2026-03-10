@@ -364,12 +364,13 @@ export function renderSettleUp() {
     let adminLockHtml = '';
     if (isGroupAdmin(activeGroup)) {
         const lockBtn = activeGroup.isLocked
-            ? `<button onclick="toggleGroupLock(false)" class="btn outline" style="margin-bottom: 0.75rem; width: 100%; border-color: var(--success); color: var(--success); font-weight: bold;"><i class="fa-solid fa-unlock"></i> Unlock Group</button>`
-            : `<button onclick="toggleGroupLock(true)" class="btn outline" style="margin-bottom: 0.75rem; width: 100%; border-color: var(--warning); color: var(--warning); font-weight: bold;"><i class="fa-solid fa-lock"></i> Lock Group for Settlements</button>`;
+            ? `<button onclick="toggleGroupLock(false)" class="btn outline" style="margin-bottom: 1rem; width: 100%; border-color: var(--success); color: var(--success); font-weight: bold;"><i class="fa-solid fa-unlock"></i> Unlock Group</button>`
+            : `<button onclick="toggleGroupLock(true)" class="btn outline" style="margin-bottom: 1rem; width: 100%; border-color: var(--warning); color: var(--warning); font-weight: bold;"><i class="fa-solid fa-lock"></i> Lock Group for Settlements</button>`;
 
         adminLockHtml = `
             ${lockBtn}
-            <button onclick="sealAndArchive()" class="btn outline" style="margin-bottom: 1.5rem; width: 100%; border-color: rgba(99,102,241,0.6); color: var(--primary); font-weight: bold; background: rgba(99,102,241,0.06);">
+            <div style="border-top: 1px dashed rgba(255,255,255,0.07); margin-bottom: 1rem;"></div>
+            <button onclick="sealAndArchive()" class="btn outline" style="margin-bottom: 1.5rem; width: 100%; border-color: rgba(99,102,241,0.3); color: rgba(99,102,241,0.7); font-weight: 600; font-size: 0.85rem; background: rgba(99,102,241,0.04);">
                 <i class="fa-solid fa-box-archive"></i> Seal &amp; Archive All Expenses
             </button>
         `;
@@ -491,8 +492,11 @@ export function renderSettleUp() {
         });
         bHtml += `
             <tr>
-                <td colspan="3" style="padding: 1rem 0 0.5rem; text-align:right; font-weight: bold; color: var(--text-muted);">Grand Total:</td>
-                <td style="padding: 1rem 0 0.5rem; text-align:right; font-weight: 800; color: var(--primary); font-size: 1.1rem;">${grandTotal.toFixed(2)} ${targetCur}</td>
+                <td colspan="4" style="padding: 0; border-top: 1px solid rgba(255,255,255,0.1);"></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="padding: 0.75rem 0 0.5rem; text-align:right; font-weight: bold; color: var(--text-muted);">Grand Total:</td>
+                <td style="padding: 0.75rem 0 0.5rem; text-align:right; font-weight: 800; color: var(--primary); font-size: 1.1rem;">${grandTotal.toFixed(2)} ${targetCur}</td>
             </tr>
         `;
         bHtml += '</table>';
