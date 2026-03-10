@@ -4,6 +4,7 @@ import { addPerson, removePerson, editPerson, claimPerson } from '../../api/peop
 import { getActiveGroup, state, isGroupAdmin } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { showConfirm, showAlert } from '../../utils/dialogs.js';
+import { calculateBalances } from '../../utils/math.js';
 
 export function initPeopleUI() {
     const addPersonBtn = document.getElementById('add-person-btn');
@@ -132,7 +133,28 @@ function openEditPersonModal(id) {
 }
 
 async function removePersonUI(id) {
-    const confirmed = await showConfirm('Remove Person', 'Are you sure you want to remove this person?', {
+    const activeGroup = getActiveGroup();
+    const person = activeGroup.people.find(p => p.id === id);
+    const personName = person?.name || 'This person';
+
+    // Balance guard — block removal if they have outstanding debts
+    const balances = calculateBalances(activeGroup);
+    const personBals = balances[id] || {};
+    const outstanding = Object.entries(personBals).filter(([, amt]) => Math.abs(amt) > 0.01);
+    if (outstanding.length > 0) {
+        const lines = outstanding.map(([cur, amt]) => {
+            const prefix = amt > 0 ? 'is owed' : 'owes';
+            return `${personName} ${prefix} ${Math.abs(amt).toFixed(2)} ${cur}`;
+        }).join('\n');
+        showAlert(
+            'Outstanding Balance',
+            `Cannot remove ${personName} — they still have unpaid balances:\n\n${lines}\n\nSettle all debts first.`,
+            { icon: 'fa-circle-exclamation' }
+        );
+        return;
+    }
+
+    const confirmed = await showConfirm('Remove Person', `Remove ${escapeHTML(personName)} from the group?`, {
         danger: true,
         confirmText: 'Remove',
         icon: 'fa-user-minus'

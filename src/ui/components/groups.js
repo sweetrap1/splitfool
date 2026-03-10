@@ -4,6 +4,7 @@ import { createNewGroup, updateGroup, deleteGroup, leaveGroup } from '../../api/
 import { getActiveGroup, isGroupAdmin, state } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { showAlert, showConfirm } from '../../utils/dialogs.js';
+import { calculateBalances } from '../../utils/math.js';
 
 export function initGroupsUI(renderAll) {
     // NOTE: The group selector <change> event is owned by navigation.js
@@ -186,7 +187,28 @@ export function initGroupsUI(renderAll) {
         document.getElementById('confirm-leave-group-btn')?.addEventListener('click', async () => {
             const activeGroup = getActiveGroup();
             const uid = state.currentUser ? state.currentUser.uid : state.myUserId;
-            
+
+            // Balance guard — block leaving if this person has outstanding debts
+            const myPerson = activeGroup.people.find(p => p.userId === uid);
+            if (myPerson) {
+                const balances = calculateBalances(activeGroup);
+                const myBals = balances[myPerson.id] || {};
+                const outstanding = Object.entries(myBals).filter(([, amt]) => Math.abs(amt) > 0.01);
+                if (outstanding.length > 0) {
+                    const lines = outstanding.map(([cur, amt]) => {
+                        const prefix = amt > 0 ? 'you are owed' : 'you owe';
+                        return `${prefix} ${Math.abs(amt).toFixed(2)} ${cur}`;
+                    }).join('\n');
+                    document.getElementById('leave-confirm-modal').classList.remove('active');
+                    showAlert(
+                        'Outstanding Balance',
+                        `You can't leave yet — you still have unpaid balances:\n\n${lines}\n\nSettle up first, then leave.`,
+                        { icon: 'fa-circle-exclamation' }
+                    );
+                    return;
+                }
+            }
+
             const btn = document.getElementById('confirm-leave-group-btn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Leaving...';

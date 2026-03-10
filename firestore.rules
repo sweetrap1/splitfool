@@ -6,49 +6,65 @@ service cloud.firestore {
     // ─── Groups ───────────────────────────────────────────────────────────────
     match /groups/{groupId} {
 
-      // Anyone authenticated can READ a group document (needed to validate a
-      // join code before the new member is added).
+      // READ: Any authenticated user may read to validate a join code before
+      // joining. Room codes are cryptographically random (UUID-based) so
+      // brute-force enumeration is not a practical attack vector.
+      // Authenticated-only prevents anonymous scraping.
       allow read: if request.auth != null;
 
-      // Only an authenticated user can CREATE a group, and they must be
-      // the declared creator.
+      // CREATE: Caller must declare themselves as creator.
       allow create: if request.auth != null
                     && request.resource.data.creatorId == request.auth.uid;
 
-      // UPDATE is allowed if:
-      //   (a) the caller is an existing member (their UID is in memberIds), OR
-      //   (b) the caller is joining — they are adding their own UID to
-      //       memberIds, not modifying any existing member's userId, and the
-      //       rest of the document is unchanged except for `people` and
-      //       `memberIds` fields.
+      // UPDATE is allowed when ALL of the following hold:
+      //   1. Caller is authenticated.
+      //   2. Caller is either an existing member OR is joining for the first time.
+      //   3. creatorId is NEVER allowed to change (prevents privilege escalation).
+      //   4. memberIds can only grow OR the caller is the original creator
+      //      (creator can remove/kick members; non-creators cannot evict each other).
       allow update: if request.auth != null
-                    && (
-                      isExistingMember()
-                      || isJoiningNewMember()
-                    );
+                    && (isExistingMember() || isJoiningNewMember())
+                    && isCreatorIdImmutable()
+                    && isMemberIdsValid();
 
-      // Only the creator can delete the group.
+      // DELETE: Only the original creator.
       allow delete: if request.auth != null
                     && resource.data.creatorId == request.auth.uid;
 
       // ── Helper functions ────────────────────────────────────────────────────
 
-      // Returns true when the caller's UID is already in the memberIds array.
+      // Caller is already a member of this group.
       function isExistingMember() {
         return request.auth.uid in resource.data.memberIds;
       }
 
-      // Returns true when someone is joining: they must be adding their own UID
-      // to memberIds (and not removing anyone else's).
+      // New user joining: they add exactly their own UID to memberIds,
+      // no existing member UIDs are removed.
       function isJoiningNewMember() {
         let incomingMemberIds = request.resource.data.memberIds;
         let existingMemberIds = resource.data.memberIds;
-
-        // The new memberIds must be a strict superset of the existing ones
-        // with exactly one new entry — the caller's own UID.
         return incomingMemberIds.hasAll(existingMemberIds)
                && request.auth.uid in incomingMemberIds
                && incomingMemberIds.size() == existingMemberIds.size() + 1;
+      }
+
+      // creatorId must match what's already stored — no one can self-promote.
+      function isCreatorIdImmutable() {
+        return request.resource.data.creatorId == resource.data.creatorId;
+      }
+
+      // memberIds rules:
+      //   - The original creator may change memberIds freely (add/remove/kick).
+      //   - All other members may only grow memberIds (join) or remove
+      //     themselves (leave). They cannot evict other members.
+      function isMemberIdsValid() {
+        let incoming = request.resource.data.memberIds;
+        let existing = resource.data.memberIds;
+        let isCreator = request.auth.uid == resource.data.creatorId;
+        // Creator has full control.
+        // Non-creators: incoming must contain everything except possibly themselves.
+        return isCreator
+          || incoming.hasAll(existing.removeAll([request.auth.uid]));
       }
     }
 
