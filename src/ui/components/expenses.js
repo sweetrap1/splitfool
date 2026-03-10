@@ -457,23 +457,27 @@ export function renderExpenses() {
         if (addExpenseBtn) addExpenseBtn.style.display = 'inline-flex';
     }
 
-    const countDisplay = document.getElementById('expense-count-display');
-    const expensesOnly = activeGroup.expenses.filter(e => !e.isSettlement && !e.id.startsWith('set_'));
+    const allExpenses = activeGroup.expenses.filter(e => !e.isSettlement && !e.id.startsWith('set_'));
+    const activeExpenses = allExpenses.filter(e => !e.isArchived);
+    const archivedExpenses = allExpenses.filter(e => e.isArchived);
 
+    const countDisplay = document.getElementById('expense-count-display');
     if (countDisplay) {
-        const count = expensesOnly.length;
+        const count = activeExpenses.length;
         countDisplay.textContent = count > 0 ? `(${count})` : '';
     }
 
-    if (expensesOnly.length === 0) {
+    if (activeExpenses.length === 0 && archivedExpenses.length === 0) {
         list.innerHTML += '<p class="subtitle">No expenses added yet.</p>';
         return;
     }
 
-    // Sort descending by ID (newest first)
-    const sorted = [...expensesOnly].sort((a, b) => b.id.localeCompare(a.id));
+    if (activeExpenses.length === 0) {
+        list.innerHTML += '<p class="subtitle" style="margin-bottom: 1rem;">No active expenses — all have been archived.</p>';
+    }
 
-    sorted.forEach(e => {
+    // Helper to build an expense card HTML
+    function buildExpenseCard(e, isArchived) {
         let payerText = '';
         if (e.payers && e.payers.length > 1) {
             const payerNames = e.payers.map(p => {
@@ -504,7 +508,7 @@ export function renderExpenses() {
         const safeSplit = escapeHTML(e.splitType || e.splitMode || 'equal');
 
         let actionButtons = '';
-        if (!activeGroup.isLocked) {
+        if (!isArchived && !activeGroup.isLocked) {
             actionButtons = `
                 <button class="expense-action-btn edit" onclick="editExpenseUI('${safeId}')" title="Edit Expense">
                     <i class="fa-solid fa-pen"></i>
@@ -524,7 +528,7 @@ export function renderExpenses() {
             }
         }
 
-        let detailsHtml = `
+        const detailsHtml = `
             <div class="expense-details" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
                 <div class="payer-badge" style="color: var(--text-main); display: flex; align-items: center; gap: 8px;">
                     <span>Paid by <strong>${payerText}</strong></span>
@@ -539,11 +543,14 @@ export function renderExpenses() {
             </div>
         `;
 
-        list.innerHTML += `
-            <div class="card expense-card" id="exp_${safeId}">
+        const archivedClass = isArchived ? ' expense-archived' : '';
+        const archivedBadge = isArchived ? `<span style="font-size: 0.7rem; color: var(--text-muted); background: rgba(255,255,255,0.06); border-radius: 8px; padding: 2px 8px; margin-left: 6px; font-weight: 600; letter-spacing: 0.5px;"><i class="fa-solid fa-box-archive" style="margin-right: 3px;"></i>Archived</span>` : '';
+
+        return `
+            <div class="card expense-card${archivedClass}" id="exp_${safeId}">
                 <div class="expense-header">
-                    <div style="flex:1">
-                        <h3>${safeDesc}</h3>
+                    <div style="flex:1; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+                        <h3>${safeDesc}</h3>${archivedBadge}
                     </div>
                     <div class="amount">${symbol} ${e.amount.toFixed(2)}</div>
                     <div class="expense-actions">
@@ -553,8 +560,42 @@ export function renderExpenses() {
                 ${detailsHtml}
             </div>
         `;
+    }
+
+    // Render active expenses
+    const sorted = [...activeExpenses].sort((a, b) => b.id.localeCompare(a.id));
+    sorted.forEach(e => {
+        list.innerHTML += buildExpenseCard(e, false);
     });
+
+    // Render archived (Settled History) section
+    if (archivedExpenses.length > 0) {
+        const sortedArchived = [...archivedExpenses].sort((a, b) => b.id.localeCompare(a.id));
+        const historyId = 'expense-history-body';
+
+        const historyHtml = `
+            <div style="border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 0.5rem;">
+                <button class="expense-history-toggle" id="expense-history-toggle" onclick="toggleExpenseHistory()" title="Toggle settled history">
+                    <span><i class="fa-solid fa-box-archive" style="margin-right: 8px; color: var(--text-muted);"></i>Settled History <span style="font-weight: 400; opacity: 0.7;">(${sortedArchived.length})</span></span>
+                    <i class="fa-solid fa-chevron-down toggle-chevron"></i>
+                </button>
+                <div class="expense-history-body" id="${historyId}">
+                    ${sortedArchived.map(e => buildExpenseCard(e, true)).join('')}
+                </div>
+            </div>
+        `;
+        list.innerHTML += historyHtml;
+    }
 }
+
+window.toggleExpenseHistory = function() {
+    const btn = document.getElementById('expense-history-toggle');
+    const body = document.getElementById('expense-history-body');
+    if (!btn || !body) return;
+    const isOpen = body.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+};
+
 
 function editExpenseUI(id) {
     const activeGroup = getActiveGroup();

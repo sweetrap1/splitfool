@@ -2,7 +2,7 @@
  * Calculates balances for all people in a group.
  * Returns an object: { [personId]: { [currency]: balance } }
  */
-export function calculateBalances(activeGroup, ignoreSettlements = false) {
+export function calculateBalances(activeGroup, ignoreSettlements = false, ignoreArchived = true) {
     if (!activeGroup || !activeGroup.people) return {};
 
     const balances = {};
@@ -16,6 +16,7 @@ export function calculateBalances(activeGroup, ignoreSettlements = false) {
 
     // Calculate per expense
     activeGroup.expenses.forEach(e => {
+        if (ignoreArchived && e.isArchived) return;
         if (ignoreSettlements && (e.isSettlement || (e.id && e.id.startsWith('set_')))) return;
 
         const amount = Number(e.amount) || 0;
@@ -163,7 +164,7 @@ export function simplifyDebts(balances, currency) {
  *   Pass 1 – build pairwise debts from regular expenses (including refunds).
  *   Pass 2 – subtract recorded settlements from those pairwise debts.
  */
-export function calculateDirectDebts(activeGroup, targetCurrency = null, exchangeRates = null) {
+export function calculateDirectDebts(activeGroup, targetCurrency = null, exchangeRates = null, ignoreArchived = true) {
     if (!activeGroup || !activeGroup.people || !activeGroup.expenses) return [];
 
     // Map: { [p1_id]: { [p2_id]: { [currency]: net } } }
@@ -208,6 +209,7 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
 
     // ── PASS 1: build raw pairwise debts from every non-settlement expense ──
     activeGroup.expenses.forEach(e => {
+        if (ignoreArchived && e.isArchived) return;
         const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
         if (isSettlement) return;
 
@@ -260,6 +262,7 @@ export function calculateDirectDebts(activeGroup, targetCurrency = null, exchang
 
     // ── PASS 2: subtract all recorded settlements ──
     activeGroup.expenses.forEach(e => {
+        if (ignoreArchived && e.isArchived) return;
         const isSettlement = e.isSettlement || (e.id && e.id.startsWith('set_'));
         if (!isSettlement) return;
 

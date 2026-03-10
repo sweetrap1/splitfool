@@ -936,6 +936,66 @@ select option {
     color: var(--danger);
 }
 
+/* Archived / Settled History styles (Evergreen feature) */
+.expense-archived {
+    opacity: 0.42;
+    filter: grayscale(30%);
+    border-style: dashed !important;
+    border-color: rgba(255, 255, 255, 0.07) !important;
+    transition: opacity 0.2s;
+}
+
+.expense-archived:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    opacity: 0.55;
+}
+
+.expense-archived .expense-actions {
+    display: none;
+}
+
+.expense-history-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 0.75rem 0;
+    cursor: pointer;
+    transition: color 0.2s;
+    margin-top: 1rem;
+}
+
+.expense-history-toggle:hover {
+    color: var(--text-main);
+}
+
+.expense-history-toggle .toggle-chevron {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.85rem;
+}
+
+.expense-history-toggle.open .toggle-chevron {
+    transform: rotate(180deg);
+}
+
+.expense-history-body {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expense-history-body.open {
+    max-height: 5000px;
+}
 
 /* Utility Classes */
 .amount {

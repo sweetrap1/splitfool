@@ -27,3 +27,26 @@ export async function deleteExpense(expenseId) {
     activeGroup.expenses = activeGroup.expenses.filter(e => e.id !== expenseId);
     return saveGroupState(activeGroup);
 }
+
+/**
+ * Archives all non-archived expenses in the active group.
+ * Sets isArchived: true on every expense (including settlements).
+ * This is the "Evergreen" reset — balances become $0, history is preserved.
+ */
+export async function archiveSettledExpenses() {
+    const activeGroup = getActiveGroup();
+    if (!activeGroup.id) return;
+
+    let didChange = false;
+    activeGroup.expenses = activeGroup.expenses.map(e => {
+        if (!e.isArchived) {
+            didChange = true;
+            return { ...e, isArchived: true };
+        }
+        return e;
+    });
+
+    if (didChange) {
+        return saveGroupState(activeGroup);
+    }
+}
