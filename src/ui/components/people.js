@@ -57,7 +57,13 @@ export function renderPeople() {
     if (!list) return;
 
     if (!activeGroup || !activeGroup.people || activeGroup.people.length === 0) {
-        list.innerHTML = '<div class="empty-state">No people added yet. Add someone to start splitting!</div>';
+        list.innerHTML = `
+            <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                <i class="fa-solid fa-users" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3; display: block;"></i>
+                <div style="font-weight: 600; margin-bottom: 0.4rem; color: var(--text-main);">No people yet</div>
+                <div style="font-size: 0.85rem;">Add the people splitting expenses with you.</div>
+            </div>
+        `;
         return;
     }
 

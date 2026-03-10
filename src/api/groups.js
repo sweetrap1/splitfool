@@ -183,12 +183,22 @@ export async function leaveGroup(groupId, uid) {
         if (!doc.exists) return;
 
         const data = doc.data();
+
+        // Find the person record before removing, so we can preserve their
+        // name in formerMembers for expense-history display
+        const leavingPerson = (data.people || []).find(p => p.userId === uid);
+        const formerMembers = data.formerMembers || [];
+        if (leavingPerson && !formerMembers.some(fm => fm.id === leavingPerson.id)) {
+            formerMembers.push({ id: leavingPerson.id, name: leavingPerson.name });
+        }
+
         const updatedPeople = (data.people || []).filter(p => p.userId !== uid);
         const updatedMemberIds = (data.memberIds || []).filter(id => id !== uid);
 
         transaction.update(ref, {
             people: updatedPeople,
-            memberIds: updatedMemberIds
+            memberIds: updatedMemberIds,
+            formerMembers
         });
     });
 

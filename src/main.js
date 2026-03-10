@@ -97,6 +97,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Critical initialization error:", err);
     }
     renderAll();
+
+    // ── Offline / reconnection banner ────────────────────────────────────────
+    const offlineBanner = document.createElement('div');
+    offlineBanner.id = 'offline-banner';
+    offlineBanner.innerHTML = '<i class="fa-solid fa-wifi" style="text-decoration: line-through; margin-right: 6px;"></i> No internet connection — changes will sync when you reconnect.';
+    Object.assign(offlineBanner.style, {
+        display: 'none', position: 'fixed', top: '0', left: '0', right: '0',
+        zIndex: '9999', background: 'rgba(239,68,68,0.92)', color: '#fff',
+        textAlign: 'center', padding: '10px 1rem', fontSize: '0.85rem',
+        fontWeight: '600', fontFamily: "'Outfit', sans-serif",
+        backdropFilter: 'blur(6px)', letterSpacing: '0.2px'
+    });
+    document.body.prepend(offlineBanner);
+
+    window.addEventListener('offline', () => { offlineBanner.style.display = 'block'; });
+    window.addEventListener('online',  () => { offlineBanner.style.display = 'none'; });
+    if (!navigator.onLine) offlineBanner.style.display = 'block';
 });
 
 async function initFirebaseDataFallback() {

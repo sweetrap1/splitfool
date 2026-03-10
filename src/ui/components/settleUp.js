@@ -126,6 +126,33 @@ export function initSettleUpUI(renderAll) {
         }
     };
 
+    window.recordManualSettle = async (fromId, toId, amount, currency) => {
+        const activeGroup = getActiveGroup();
+        if (!activeGroup.id) return;
+
+        const fromPerson = activeGroup.people.find(p => p.id === fromId);
+        const toPerson = activeGroup.people.find(p => p.id === toId);
+        const fromName = fromPerson?.name || 'Unknown';
+        const toName = toPerson?.name || 'Unknown';
+
+        const settlement = {
+            id: 'set_' + Date.now(),
+            isSettlement: true,
+            description: `${fromName} → ${toName}`,
+            amount: Number(amount),
+            currency: currency || 'USD',
+            payerId: fromId,
+            payers: [{ personId: fromId, amount: Number(amount) }],
+            participants: [{ personId: toId, share: Number(amount) }],
+            splitType: 'equal',
+            createdAt: new Date().toISOString()
+        };
+
+        activeGroup.expenses.push(settlement);
+        await saveGroupState(activeGroup);
+        renderAll();
+    };
+
     window.unmarkSettle = async (settlementId) => {
         const activeGroup = getActiveGroup();
         const settlement = activeGroup.expenses.find(e => e.id === settlementId);

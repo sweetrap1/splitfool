@@ -489,16 +489,20 @@ export function renderExpenses() {
 
     // Helper to build an expense card HTML
     function buildExpenseCard(e, isArchived) {
+        // Name lookup — falls back to formerMembers if someone left the group
+        const findName = (id) => {
+            const p = activeGroup.people.find(p => p.id === id);
+            if (p) return p.name;
+            const fm = (activeGroup.formerMembers || []).find(fm => fm.id === id);
+            return fm ? `${fm.name} (left)` : 'Unknown';
+        };
+
         let payerText = '';
         if (e.payers && e.payers.length > 1) {
-            const payerNames = e.payers.map(p => {
-                const person = activeGroup.people.find(person => person.id === p.personId);
-                return person ? person.name : 'Unknown';
-            });
+            const payerNames = e.payers.map(p => findName(p.personId));
             payerText = escapeHTML(payerNames.join(', '));
         } else {
-            const rawPayerName = activeGroup.people.find(p => p.id === (e.payerId || e.paidBy))?.name || 'Unknown';
-            payerText = escapeHTML(rawPayerName);
+            payerText = escapeHTML(findName(e.payerId || e.paidBy));
         }
 
         const symbol = escapeHTML(e.currency || 'USD');
@@ -507,10 +511,7 @@ export function renderExpenses() {
         if (e.participants.length === activeGroup.people.length && activeGroup.people.length > 0) {
             participantNames = 'All';
         } else {
-            const names = e.participants.map(part => {
-                const person = activeGroup.people.find(p => p.id === part.personId);
-                return person ? person.name : 'Unknown';
-            });
+            const names = e.participants.map(part => findName(part.personId));
             participantNames = escapeHTML(names.join(', ')) + ` <span style="color: var(--primary); font-weight: bold;">(${e.participants.length})</span>`;
         }
 
