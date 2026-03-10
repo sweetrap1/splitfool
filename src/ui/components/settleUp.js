@@ -92,9 +92,26 @@ export function initSettleUpUI(renderAll) {
     };
 
     window.sealAndArchive = async () => {
+        const activeGroup = getActiveGroup();
+
+        // Guard: only allow archiving when all active balances are settled
+        const balances = calculateBalances(activeGroup);
+        const hasOutstanding = Object.values(balances).some(personBals =>
+            Object.values(personBals).some(amt => Math.abs(amt) > 0.01)
+        );
+
+        if (hasOutstanding) {
+            showAlert(
+                'Not Settled Yet',
+                'There are still outstanding balances. Please settle up with everyone before sealing and archiving.',
+                { icon: 'fa-circle-exclamation' }
+            );
+            return;
+        }
+
         const confirmed = await showConfirm(
             'Seal & Archive Expenses?',
-            'This will archive all current expenses and settlements, resetting balances to zero. Your history will still be visible in the Settled History section on the Expenses tab.',
+            'All balances are settled! This will archive the current expenses so you can start fresh. Your history will still be visible in the Settled History section on the Expenses tab.',
             { confirmText: 'Seal & Archive', icon: 'fa-box-archive' }
         );
         if (!confirmed) return;
@@ -342,21 +359,19 @@ export function renderSettleUp() {
 
     const balances = calculateBalances(activeGroup);
 
-    // Lock Notification for Admins
+    // Admin controls
     let adminLockHtml = '';
     if (isGroupAdmin(activeGroup)) {
-        if (activeGroup.isLocked) {
-            adminLockHtml = `
-                <button onclick="toggleGroupLock(false)" class="btn outline" style="margin-bottom: 0.75rem; width: 100%; border-color: var(--success); color: var(--success); font-weight: bold;">
-                    <i class="fa-solid fa-unlock"></i> Unlock Group
-                </button>
-                <button onclick="sealAndArchive()" class="btn outline" style="margin-bottom: 1.5rem; width: 100%; border-color: rgba(99,102,241,0.6); color: var(--primary); font-weight: bold; background: rgba(99,102,241,0.06);">
-                    <i class="fa-solid fa-box-archive"></i> Seal &amp; Archive All Expenses
-                </button>
-            `;
-        } else {
-            adminLockHtml = `<button onclick="toggleGroupLock(true)" class="btn outline" style="margin-bottom: 1.5rem; width: 100%; border-color: var(--warning); color: var(--warning); font-weight: bold;"><i class="fa-solid fa-lock"></i> Lock Group for Settlements</button>`;
-        }
+        const lockBtn = activeGroup.isLocked
+            ? `<button onclick="toggleGroupLock(false)" class="btn outline" style="margin-bottom: 0.75rem; width: 100%; border-color: var(--success); color: var(--success); font-weight: bold;"><i class="fa-solid fa-unlock"></i> Unlock Group</button>`
+            : `<button onclick="toggleGroupLock(true)" class="btn outline" style="margin-bottom: 0.75rem; width: 100%; border-color: var(--warning); color: var(--warning); font-weight: bold;"><i class="fa-solid fa-lock"></i> Lock Group for Settlements</button>`;
+
+        adminLockHtml = `
+            ${lockBtn}
+            <button onclick="sealAndArchive()" class="btn outline" style="margin-bottom: 1.5rem; width: 100%; border-color: rgba(99,102,241,0.6); color: var(--primary); font-weight: bold; background: rgba(99,102,241,0.06);">
+                <i class="fa-solid fa-box-archive"></i> Seal &amp; Archive All Expenses
+            </button>
+        `;
     }
 
     // Update Dropdown Options
