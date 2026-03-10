@@ -114,6 +114,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('offline', () => { offlineBanner.style.display = 'block'; });
     window.addEventListener('online',  () => { offlineBanner.style.display = 'none'; });
     if (!navigator.onLine) offlineBanner.style.display = 'block';
+
+    // ── PWA Installation Logic ───────────────────────────────────────────────
+    let deferredPrompt;
+    const installBtn = document.getElementById('install-pwa-btn');
+    const installLoginBtn = document.getElementById('install-pwa-login-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+
+        if (installBtn) installBtn.style.display = 'inline-flex';
+        if (installLoginBtn) installLoginBtn.style.display = 'inline-flex';
+        console.log("PWA install prompt is ready.");
+    });
+
+    async function handleInstallPrompt() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        
+        deferredPrompt = null;
+        if (installBtn) installBtn.style.display = 'none';
+        if (installLoginBtn) installLoginBtn.style.display = 'none';
+    }
+
+    if (installBtn) installBtn.addEventListener('click', handleInstallPrompt);
+    if (installLoginBtn) installLoginBtn.addEventListener('click', handleInstallPrompt);
 });
 
 async function initFirebaseDataFallback() {

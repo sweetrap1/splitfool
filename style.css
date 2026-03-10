@@ -106,13 +106,15 @@
 }
 
 .section-label {
+    width: 100%;
+    text-align: center;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.2rem;
     font-weight: 800;
     color: var(--primary);
     margin-bottom: 12px;
-    margin-left: 4px;
+    margin-left: 0;
 }
 
 .google-btn {
