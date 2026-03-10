@@ -1,7 +1,7 @@
 // Auth API and Logic
 import { auth, db, provider } from '../firebase-init.js';
-import { state, savedGroupIds, saveSavedGroupIds, myUserId } from '../state.js';
-import { subscribeToGroup } from './groups.js';
+import { state, savedGroupIds, saveSavedGroupIds } from '../state.js';
+import { subscribeToGroup, addMemberToGroup } from './groups.js';
 
 export async function loginWithPopup() {
     await auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
@@ -16,7 +16,11 @@ export function logout() {
     return auth.signOut();
 }
 
-export async function joinGroupWithCode(code, user) {
+/**
+ * Verify a group join code exists in Firestore, then subscribe to it.
+ * Requires the caller to already be authenticated (Firestore rules enforce this).
+ */
+export async function joinGroupWithCode(code) {
     if (savedGroupIds.includes(code)) {
         return code;
     }
@@ -28,55 +32,54 @@ export async function joinGroupWithCode(code, user) {
         await subscribeToGroup(code);
         return code;
     } else {
-        throw new Error("Trip code not found.");
+        throw new Error('Trip code not found.');
     }
 }
 
-export async function handlePendingInvite(user) {
-    // This logic relies on UI for claiming, so we pass it back up
-    const pendingCode = localStorage.getItem('splitfool_pending_invite');
-    if (!pendingCode || !user) return null;
-
-    localStorage.removeItem('splitfool_pending_invite');
-    window.history.replaceState({}, document.title, window.location.pathname);
-
-    const docRef = await db.collection('groups').doc(pendingCode).get();
-    if (!docRef.exists) {
-        throw new Error(`Invite link invalid: Trip '${pendingCode}' was not found.`);
-    }
-
-    const groupData = docRef.data();
-    return { pendingCode, groupData };
-}
-
+/**
+ * Atomically claim an unclaimed person slot for the given user.
+ * Also adds the user's UID to the flat memberIds array so Firestore
+ * rules permit future writes.
+ */
 export async function claimPersonForInvite(groupId, personId, user) {
     await db.runTransaction(async (t) => {
         const ref = db.collection('groups').doc(groupId);
         const doc = await t.get(ref);
-        if (!doc.exists) throw new Error("Group does not exist.");
+        if (!doc.exists) throw new Error('Group does not exist.');
 
         let groupData = doc.data();
         let pIndex = groupData.people.findIndex(p => p.id === personId);
         if (pIndex !== -1) {
             if (groupData.people[pIndex].userId) {
-                throw new Error("This profile is already claimed.");
+                throw new Error('This profile is already claimed.');
             }
             groupData.people[pIndex].userId = user.uid;
-            t.update(ref, { people: groupData.people });
+
+            // Ensure memberIds exists and add the new uid atomically
+            const existingMemberIds = groupData.memberIds || groupData.people.filter(p => p.userId).map(p => p.userId);
+            if (!existingMemberIds.includes(user.uid)) {
+                existingMemberIds.push(user.uid);
+            }
+
+            t.update(ref, {
+                people: groupData.people,
+                memberIds: existingMemberIds
+            });
         }
     });
 }
 
 export async function joinNewPersonToGroup(groupId, name, venmo, userId) {
-    const id = 'p_' + Date.now();
     const newPerson = {
-        id,
+        id: crypto.randomUUID(),
         name,
         venmoUsername: venmo,
         userId: userId
     };
 
+    // Update people array and add to the flat memberIds for Firestore rule checks
     await db.collection('groups').doc(groupId).update({
-        people: window.firebase.firestore.FieldValue.arrayUnion(newPerson)
+        people: window.firebase.firestore.FieldValue.arrayUnion(newPerson),
+        memberIds: window.firebase.firestore.FieldValue.arrayUnion(userId)
     });
 }

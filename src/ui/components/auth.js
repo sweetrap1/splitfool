@@ -1,11 +1,11 @@
 // Auth UI Component
 
-import { loginWithPopup, loginWithRedirect, logout, joinGroupWithCode } from '../../api/auth.js';
-import { state } from '../../state.js';
+import { loginWithPopup, loginWithRedirect, logout } from '../../api/auth.js';
+import { showAlert } from '../../utils/dialogs.js';
 
 export function initAuthUI(onAuthChange, renderAll) {
     const loginHandler = async () => {
-        showAuthStatus("Initializing Google Login...", "");
+        showAuthStatus('Initializing Google Login...', '');
         const googleBtn = document.getElementById('google-login-btn');
         if (googleBtn) googleBtn.disabled = true;
 
@@ -13,15 +13,15 @@ export function initAuthUI(onAuthChange, renderAll) {
             await loginWithPopup();
         } catch (error) {
             if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-                showAuthStatus("Popup blocked. Redirecting...", "");
+                showAuthStatus('Popup blocked. Redirecting...', '');
                 loginWithRedirect().catch(err => {
                     handleAuthError(err);
-                    showAuthStatus("Login failed: " + err.message, "error");
+                    showAuthStatus('Login failed: ' + err.message, 'error');
                     if (googleBtn) googleBtn.disabled = false;
                 });
             } else {
                 handleAuthError(error);
-                showAuthStatus("Login error: " + error.message, "error");
+                showAuthStatus('Login error: ' + error.message, 'error');
                 if (googleBtn) googleBtn.disabled = false;
             }
         }
@@ -30,35 +30,15 @@ export function initAuthUI(onAuthChange, renderAll) {
     document.getElementById('login-btn')?.addEventListener('click', loginHandler);
     document.getElementById('google-login-btn')?.addEventListener('click', loginHandler);
 
-    const joinHandler = async () => {
-        const codeInput = document.getElementById('login-join-code');
-        const code = codeInput.value.trim().toUpperCase();
-        if (code && code.length >= 6 && code.length <= 8) {
-            try {
-                await joinGroupWithCode(code);
-                document.getElementById('auth-overlay')?.classList.add('hidden');
-                document.querySelector('.app-container')?.classList.remove('hidden');
-                state.activeGroupId = code;
-                renderAll();
-            } catch (err) {
-                alert(err.message);
-            }
-        } else {
-            alert("Please enter a valid 6-8 character code.");
-        }
-    };
-
-    document.getElementById('login-join-btn')?.addEventListener('click', joinHandler);
-    document.getElementById('login-join-code')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') joinHandler();
-    });
-
+    // The unauthenticated "join with code" flow on the login screen has been
+    // removed. Firestore rules require authentication before any read/write.
+    // Users must sign in with Google first, then join via the in-app Join button.
     document.getElementById('logout-btn')?.addEventListener('click', () => {
         logout();
     });
 }
 
-export function showAuthStatus(message, type = "", duration = 0) {
+export function showAuthStatus(message, type = '', duration = 0) {
     const statusEl = document.getElementById('auth-status');
     if (!statusEl) return;
 
@@ -74,8 +54,8 @@ export function showAuthStatus(message, type = "", duration = 0) {
 }
 
 export function handleAuthError(error) {
-    console.error("Login Error:", error);
-    showAuthStatus(`Error: ${error.message}`, "error");
+    console.error('Login Error:', error);
+    showAuthStatus(`Error: ${error.message}`, 'error');
 
     let msg = `Login Failed: ${error.message}`;
 
@@ -89,5 +69,5 @@ export function handleAuthError(error) {
         msg = "Cookie Error detected. If you are on an iPhone using Safari, please ensure 'Block All Cookies' is turned off in Settings > Safari. Also ensure you are not in Incognito/Private mode.";
     }
 
-    alert(msg);
+    showAlert('Login Failed', msg, { icon: 'fa-lock' });
 }

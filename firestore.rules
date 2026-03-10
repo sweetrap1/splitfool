@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Groups ───────────────────────────────────────────────────────────────
+    match /groups/{groupId} {
+
+      // Anyone authenticated can READ a group document (needed to validate a
+      // join code before the new member is added).
+      allow read: if request.auth != null;
+
+      // Only an authenticated user can CREATE a group, and they must be
+      // the declared creator.
+      allow create: if request.auth != null
+                    && request.resource.data.creatorId == request.auth.uid;
+
+      // UPDATE is allowed if:
+      //   (a) the caller is an existing member (their UID is in memberIds), OR
+      //   (b) the caller is joining — they are adding their own UID to
+      //       memberIds, not modifying any existing member's userId, and the
+      //       rest of the document is unchanged except for `people` and
+      //       `memberIds` fields.
+      allow update: if request.auth != null
+                    && (
+                      isExistingMember()
+                      || isJoiningNewMember()
+                    );
+
+      // Only the creator can delete the group.
+      allow delete: if request.auth != null
+                    && resource.data.creatorId == request.auth.uid;
+
+      // ── Helper functions ────────────────────────────────────────────────────
+
+      // Returns true when the caller's UID is already in the memberIds array.
+      function isExistingMember() {
+        return request.auth.uid in resource.data.memberIds;
+      }
+
+      // Returns true when someone is joining: they must be adding their own UID
+      // to memberIds (and not removing anyone else's).
+      function isJoiningNewMember() {
+        let incomingMemberIds = request.resource.data.memberIds;
+        let existingMemberIds = resource.data.memberIds;
+
+        // The new memberIds must be a strict superset of the existing ones
+        // with exactly one new entry — the caller's own UID.
+        return incomingMemberIds.hasAll(existingMemberIds)
+               && request.auth.uid in incomingMemberIds
+               && incomingMemberIds.size() == existingMemberIds.size() + 1;
+      }
+    }
+
+    // ─── Deny everything else by default ─────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

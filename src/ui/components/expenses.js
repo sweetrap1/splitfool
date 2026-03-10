@@ -1,7 +1,7 @@
 // Expenses UI Component
 
 import { deleteExpense, addExpense, editExpense } from '../../api/expenses.js';
-import { getActiveGroup, currentUser } from '../../state.js';
+import { getActiveGroup, state } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { showConfirm, showAlert } from '../../utils/dialogs.js';
 
@@ -25,11 +25,11 @@ export function initExpensesUI(renderAll) {
         addExpenseBtn.addEventListener('click', () => {
             const activeGroup = getActiveGroup();
             if (!activeGroup || activeGroup.people.length === 0) {
-                alert("Please add at least 2 people first.");
+                showAlert('No People', "Please add at least 2 people first.", { icon: 'fa-users-slash' });
                 return;
             }
             if (activeGroup.isLocked) {
-                alert("This trip is locked. No new expenses can be added.");
+                showAlert('Trip Locked', "This trip is locked. No new expenses can be added.", { icon: 'fa-lock' });
                 return;
             }
 
@@ -45,8 +45,8 @@ export function initExpensesUI(renderAll) {
             const expenseIdInput = document.getElementById('expense-id');
             const existingId = expenseIdInput.value;
 
-            if (!desc || isNaN(amount)) {
-                alert('Please enter a valid description and amount.');
+            if (!desc || isNaN(amount) || amount === 0) {
+                showAlert('Invalid Amount', 'Please enter a description and a non-zero amount. Use a negative amount for a refund.', { icon: 'fa-circle-exclamation' });
                 return;
             }
 
@@ -54,14 +54,14 @@ export function initExpensesUI(renderAll) {
             if (currentPayerMode === 'single') {
                 const payerId = document.getElementById('expense-payer').value;
                 if (!payerId) {
-                    alert("Please select who paid.");
+                    showAlert('No Payer', "Please select who paid.", { icon: 'fa-user-slash' });
                     return;
                 }
                 payers.push({ personId: payerId, amount: amount });
             } else {
                 const summaryEl = document.getElementById('multiple-payers-summary');
                 if (summaryEl && summaryEl.classList.contains('error')) {
-                    alert('The multiple payers total does not match the expense amount.');
+                    showAlert('Math Error', 'The multiple payers total does not match the expense amount.', { icon: 'fa-calculator' });
                     return;
                 }
                 const multiPayerContainer = document.getElementById('multiple-payers-list');
@@ -75,7 +75,7 @@ export function initExpensesUI(renderAll) {
                     });
                 }
                 if (payers.length === 0) {
-                    alert('Please specify who paid for this expense.');
+                    showAlert('No Payers', 'Please specify who paid for this expense.', { icon: 'fa-user-slash' });
                     return;
                 }
             }
@@ -84,7 +84,7 @@ export function initExpensesUI(renderAll) {
             if (currentSplitMode === 'paid_for') {
                 const owedById = document.getElementById('paid-for-select').value;
                 if (!owedById) {
-                    alert('Please select who you paid for.');
+                    showAlert('No Participant', 'Please select who you paid for.', { icon: 'fa-user-slash' });
                     return;
                 }
                 participants.push({ personId: owedById, share: amount });
@@ -92,13 +92,13 @@ export function initExpensesUI(renderAll) {
                 const splitContainer = document.getElementById('split-participants');
                 const checkboxes = splitContainer ? splitContainer.querySelectorAll('.participant-cb:checked') : [];
                 if (checkboxes.length === 0) {
-                    alert('Please select at least one participant.');
+                    showAlert('No Participants', 'Please select at least one participant.', { icon: 'fa-users-slash' });
                     return;
                 }
 
                 const summaryEl = document.getElementById('split-summary');
                 if (summaryEl && summaryEl.classList.contains('error')) {
-                    alert('The assigned splits do not add up to the total.');
+                    showAlert('Math Error', 'The assigned splits do not add up to the total.', { icon: 'fa-calculator' });
                     return;
                 }
 
@@ -115,7 +115,7 @@ export function initExpensesUI(renderAll) {
             }
 
             const expenseData = {
-                id: existingId || 'e_' + Date.now(),
+                id: existingId || 'e_' + crypto.randomUUID(),
                 description: desc,
                 amount,
                 currency,
@@ -135,7 +135,7 @@ export function initExpensesUI(renderAll) {
                 }
                 expenseModal.classList.remove('active');
             } catch (err) {
-                alert("Error saving expense: " + err.message);
+                showAlert('Error', "Error saving expense: " + err.message, { icon: 'fa-circle-exclamation' });
                 console.error(err);
             } finally {
                 saveBtn.disabled = false;

@@ -1,19 +1,14 @@
 // Groups UI Component
 
-import { createNewGroup, updateGroup, deleteGroup } from '../../api/groups.js';
+import { createNewGroup, updateGroup, deleteGroup, leaveGroup } from '../../api/groups.js';
 import { getActiveGroup, isGroupAdmin, state } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
+import { showAlert, showConfirm } from '../../utils/dialogs.js';
 
 export function initGroupsUI(renderAll) {
-    const groupSelect = document.getElementById('active-group-select');
-    if (groupSelect) {
-        groupSelect.addEventListener('change', (e) => {
-            import('../../state.js').then(({ setActiveGroup }) => {
-                setActiveGroup(e.target.value);
-                renderAll();
-            });
-        });
-    }
+    // NOTE: The group selector <change> event is owned by navigation.js
+    // (renderGroupSelector) which sets the active group AND resets settle mode.
+    // Do NOT attach another change listener here — it would cause double renders.
 
     const addGroupModal = document.getElementById('group-modal');
     if (addGroupModal) {
@@ -44,7 +39,7 @@ export function initGroupsUI(renderAll) {
             const activeGroup = getActiveGroup();
 
             if (!isGroupAdmin(activeGroup)) {
-                alert("Only the group creator can rename this trip.");
+                showAlert('Access Denied', 'Only the group creator can rename this trip.', { icon: 'fa-circle-exclamation' });
                 return;
             }
 
@@ -64,7 +59,7 @@ export function initGroupsUI(renderAll) {
             const defaultCur = document.getElementById('edit-group-default-currency').value;
             const settleCur = document.getElementById('edit-group-settle-currency').value;
 
-            if (newName && newName !== "") {
+            if (newName && newName !== '') {
                 await updateGroup(activeGroup.id, newName, {
                     defaultCurrency: defaultCur,
                     settleCurrency: settleCur
@@ -81,16 +76,16 @@ export function initGroupsUI(renderAll) {
             const activeGroup = getActiveGroup();
 
             if (!isGroupAdmin(activeGroup)) {
-                alert("Only the group creator can delete this trip.");
+                showAlert('Access Denied', 'Only the group creator can delete this trip.', { icon: 'fa-circle-exclamation' });
                 return;
             }
 
             if (state.groups.length <= 1) {
-                alert("You cannot delete the only remaining group.");
+                showAlert('Cannot Delete', 'You cannot delete the only remaining group.', { icon: 'fa-triangle-exclamation' });
                 return;
             }
             const safeGroupName = escapeHTML(activeGroup.name);
-            document.getElementById('delete-confirm-message').innerHTML = `Are you sure you want to delete the group <strong>"${safeGroupName}"</strong>?`;
+            document.getElementById('delete-confirm-message').innerHTML = `Are you sure you want to delete the trip <strong>"${safeGroupName}"</strong>?`;
             deleteGroupModal.classList.add('active');
         });
 
@@ -122,11 +117,17 @@ export function initGroupsUI(renderAll) {
             shareModal.classList.add('active');
         });
 
-        document.getElementById('copy-share-link-btn')?.addEventListener('click', () => {
+        // Use modern Clipboard API instead of deprecated execCommand
+        document.getElementById('copy-share-link-btn')?.addEventListener('click', async () => {
             const linkInput = document.getElementById('share-group-link-display');
             if (linkInput) {
-                linkInput.select();
-                document.execCommand('copy');
+                try {
+                    await navigator.clipboard.writeText(linkInput.value);
+                } catch {
+                    // Fallback for older browsers / non-secure contexts
+                    linkInput.select();
+                    document.execCommand('copy');
+                }
                 const btn = document.getElementById('copy-share-link-btn');
                 const original = btn.innerHTML;
                 btn.innerHTML = '<i class="fa-solid fa-check"></i>';
@@ -135,7 +136,7 @@ export function initGroupsUI(renderAll) {
         });
     }
 
-    // Join Group
+    // Join Group (authenticated users only — unauthenticated join was removed)
     const joinBtn = document.getElementById('join-group-btn');
     const joinModal = document.getElementById('join-group-modal');
     if (joinBtn && joinModal) {
@@ -158,18 +159,47 @@ export function initGroupsUI(renderAll) {
                     const { handleInviteFlow } = await import('./invite.js');
                     await handleInviteFlow(code, state.currentUser, renderAll);
                 } else {
-                    const { joinGroupWithCode } = await import('../../api/auth.js');
-                    const { setActiveGroup } = await import('../../state.js');
-                    await joinGroupWithCode(code, null);
-                    setActiveGroup(code);
-                    renderAll();
+                    // Must be logged in — prompt them to sign in first
+                    showAlert('Sign In Required', 'Please sign in with Google first, then join a trip.', { icon: 'fa-lock' });
                 }
                 joinModal.classList.remove('active');
             } catch (e) {
-                alert(e.message || "Failed to join trip.");
+                showAlert('Join Error', e.message || 'Failed to join trip.', { icon: 'fa-circle-exclamation' });
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = 'Join Trip';
+            }
+        });
+    }
+
+    // Leave Group
+    const leaveBtn = document.getElementById('leave-group-btn');
+    const leaveModal = document.getElementById('leave-confirm-modal');
+    if (leaveBtn && leaveModal) {
+        leaveBtn.addEventListener('click', () => {
+            const activeGroup = getActiveGroup();
+            const safeGroupName = escapeHTML(activeGroup.name);
+            document.getElementById('leave-confirm-message').innerHTML = `Are you sure you want to leave the trip <strong>"${safeGroupName}"</strong>?`;
+            leaveModal.classList.add('active');
+        });
+
+        document.getElementById('confirm-leave-group-btn')?.addEventListener('click', async () => {
+            const activeGroup = getActiveGroup();
+            const uid = state.currentUser ? state.currentUser.uid : state.myUserId;
+            
+            const btn = document.getElementById('confirm-leave-group-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Leaving...';
+
+            try {
+                await leaveGroup(activeGroup.id, uid);
+                leaveModal.classList.remove('active');
+                renderAll();
+            } catch (e) {
+                showAlert('Error', e.message || 'Failed to leave trip.', { icon: 'fa-circle-exclamation' });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Leave Trip';
             }
         });
     }

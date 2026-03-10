@@ -1,6 +1,10 @@
 /**
  * Custom Dialog Utility for SplitFool
  * Replaces native alert() and confirm() with stylized modals.
+ *
+ * Fixed: dialogResolve is now guarded so overlapping calls don't
+ * silently drop the first promise. The previous resolve is rejected
+ * before a new dialog opens.
  */
 
 const modal = document.getElementById('custom-dialog-modal');
@@ -12,16 +16,24 @@ const confirmBtn = document.getElementById('dialog-confirm-btn');
 
 let dialogResolve = null;
 
-export function showConfirm(title, message, options = {}) {
+function _openDialog(title, message, options = {}) {
     return new Promise((resolve) => {
+        // If a dialog is already open, reject the previous promise so it doesn't hang
+        if (dialogResolve) {
+            dialogResolve(false);
+        }
+
         titleEl.textContent = title || 'Are you sure?';
         messageEl.textContent = message || '';
         confirmBtn.textContent = options.confirmText || 'Confirm';
         cancelBtn.textContent = options.cancelText || 'Cancel';
-        cancelBtn.style.display = 'inline-flex';
 
-        // Icon handling
-        iconEl.innerHTML = `<i class="fa-solid ${options.icon || 'fa-circle-question'}"></i>`;
+        // Safely set icon class — never interpolate user-provided strings into innerHTML
+        const iconClass = /^[\w-]+$/.test(options.icon || '') ? options.icon : 'fa-circle-question';
+        iconEl.innerHTML = '';
+        const iconI = document.createElement('i');
+        iconI.className = `fa-solid ${iconClass}`;
+        iconEl.appendChild(iconI);
         iconEl.style.color = options.danger ? 'var(--danger)' : 'var(--primary)';
 
         if (options.danger) {
@@ -37,34 +49,28 @@ export function showConfirm(title, message, options = {}) {
     });
 }
 
+export function showConfirm(title, message, options = {}) {
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    return _openDialog(title, message, options);
+}
+
 export function showAlert(title, message, options = {}) {
-    return new Promise((resolve) => {
-        titleEl.textContent = title || 'Notice';
-        messageEl.textContent = message || '';
-        confirmBtn.textContent = options.confirmText || 'OK';
-        cancelBtn.style.display = 'none';
-
-        iconEl.innerHTML = `<i class="fa-solid ${options.icon || 'fa-circle-info'}"></i>`;
-        iconEl.style.color = 'var(--primary)';
-        confirmBtn.style.background = '';
-        confirmBtn.style.boxShadow = '';
-
-        dialogResolve = resolve;
-        modal.classList.add('active');
-    });
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (confirmBtn) confirmBtn.textContent = options.confirmText || 'OK';
+    return _openDialog(title, message, { ...options, confirmText: options.confirmText || 'OK' });
 }
 
 // Global listeners for the dialog buttons
 if (cancelBtn) {
     cancelBtn.onclick = () => {
         modal.classList.remove('active');
-        if (dialogResolve) dialogResolve(false);
+        if (dialogResolve) { dialogResolve(false); dialogResolve = null; }
     };
 }
 
 if (confirmBtn) {
     confirmBtn.onclick = () => {
         modal.classList.remove('active');
-        if (dialogResolve) dialogResolve(true);
+        if (dialogResolve) { dialogResolve(true); dialogResolve = null; }
     };
 }

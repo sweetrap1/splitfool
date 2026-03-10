@@ -1,7 +1,7 @@
 // People UI Component
 
 import { addPerson, removePerson, editPerson, claimPerson } from '../../api/people.js';
-import { getActiveGroup, currentUser, isGroupAdmin } from '../../state.js';
+import { getActiveGroup, state, isGroupAdmin } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { showConfirm, showAlert } from '../../utils/dialogs.js';
 
@@ -64,11 +64,11 @@ export function renderPeople() {
 
     list.innerHTML = activeGroup.people.map(p => {
         const char = p.name ? p.name.charAt(0).toUpperCase() : '?';
-        const isMe = currentUser && p.userId === currentUser.uid;
+        const isMe = state.currentUser && p.userId === state.currentUser.uid;
 
         let badgesHtml = '';
-        if (currentUser && !p.userId) {
-            const alreadyClaimedSomeone = activeGroup.people.some(person => person.userId === currentUser.uid);
+        if (state.currentUser && !p.userId) {
+            const alreadyClaimedSomeone = activeGroup.people.some(person => person.userId === state.currentUser.uid);
             if (!alreadyClaimedSomeone) {
                 badgesHtml = `<button class="btn sm" style="padding: 2px 8px; font-size: 0.7rem; height: auto;" onclick="claimPersonUI('${p.id}')"><i class="fa-solid fa-hand"></i> Claim</button>`;
             }
@@ -146,6 +146,6 @@ async function claimPersonUI(id) {
     });
 
     if (confirmed) {
-        await claimPerson(id, currentUser.uid);
+        await claimPerson(id, state.currentUser.uid);
     }
 }

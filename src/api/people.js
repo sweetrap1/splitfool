@@ -8,14 +8,13 @@ export async function addPerson(name, venmo) {
     if (!activeGroup.id || activeGroup.id === 'loading') return;
 
     const newPerson = {
-        id: 'p_' + Date.now(),
+        id: crypto.randomUUID(),
         name: name,
         venmoUsername: venmo || '',
         userId: null // Explicitly identify this as unclaimed
     };
 
     activeGroup.people.push(newPerson);
-    // Realtime listener will handle DOM update
     return saveGroupState(activeGroup);
 }
 
@@ -23,15 +22,19 @@ export async function removePerson(id) {
     const activeGroup = getActiveGroup();
     if (!activeGroup.id) return;
 
-    // Optional Check: Is person involved in an expense?
-    const involved = activeGroup.expenses.some(exp =>
-        (exp.payerMode === 'multiple' && exp.payers && exp.payers.some(p => p.personId === id)) ||
-        (exp.paidBy === id) ||
-        (exp.paidFor.some(pf => pf.personId === id && pf.included))
-    );
+    // Check if this person is involved in any expense.
+    // Uses `e.participants` (the canonical field) and also handles legacy
+    // `e.paidFor` and `e.payers` for backwards compatibility.
+    const involved = activeGroup.expenses.some(exp => {
+        const inParticipants = (exp.participants || []).some(p => p.personId === id);
+        const inPaidFor = (exp.paidFor || []).some(pf => pf.personId === id && pf.included);
+        const inPayers = (exp.payers || []).some(p => p.personId === id);
+        const isLegacyPayer = exp.paidBy === id || exp.payerId === id;
+        return inParticipants || inPaidFor || inPayers || isLegacyPayer;
+    });
 
     if (involved) {
-        throw new Error("Cannot delete. This person is involved in an expense.");
+        throw new Error('Cannot delete. This person is involved in an expense.');
     }
 
     activeGroup.people = activeGroup.people.filter(p => p.id !== id);
@@ -53,6 +56,11 @@ export async function claimPerson(personId, userId) {
     const person = activeGroup.people.find(p => p.id === personId);
     if (person && !person.userId) {
         person.userId = userId;
+        // Keep memberIds in sync
+        if (!activeGroup.memberIds) activeGroup.memberIds = [];
+        if (!activeGroup.memberIds.includes(userId)) {
+            activeGroup.memberIds.push(userId);
+        }
         return saveGroupState(activeGroup);
     }
 }

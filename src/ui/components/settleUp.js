@@ -1,7 +1,7 @@
 // Settle Up UI component
 
 import { calculateBalances, simplifyDebts, calculateDirectDebts } from '../../utils/math.js';
-import { getActiveGroup, currentUser, isGroupAdmin } from '../../state.js';
+import { getActiveGroup, state, isGroupAdmin } from '../../state.js';
 import { CURRENCY_NAMES, formatMoney, cachedExchangeRates, fetchExchangeRate, TOP_CURRENCIES } from '../../utils/currency.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { updateGroupLock, saveGroupState } from '../../api/groups.js';
@@ -59,9 +59,11 @@ export function initSettleUpUI(renderAll) {
     }
 
     if (rateInput) {
+        let _rateDebounce = null;
         rateInput.addEventListener('input', (e) => {
             manualExchangeRate = parseFloat(e.target.value) || null;
-            renderAll();
+            clearTimeout(_rateDebounce);
+            _rateDebounce = setTimeout(() => renderAll(), 300);
         });
         // Also update settleCurrencyMode on init if needed
         if (modeSelect) settleCurrencyMode = modeSelect.value;
@@ -75,10 +77,16 @@ export function initSettleUpUI(renderAll) {
             await updateGroupLock(activeGroup.id, locked);
             // The subscription will update state, but we can force render immediately for better UX
             activeGroup.isLocked = locked;
+            await saveGroupState(activeGroup); // Save the state change
             renderAll();
+            if (locked) {
+                showAlert('Trip Locked', 'This trip has been locked. You can now settle up.', { icon: 'fa-lock' });
+            } else {
+                showAlert('Trip Unlocked', 'This trip has been unlocked. Members can now add/edit expenses.', { icon: 'fa-unlock' });
+            }
         } catch (e) {
             console.error("Failed to update group lock", e);
-            alert("Failed to update group lock: " + e.message);
+            showAlert("Error", "Failed to update group lock: " + e.message, { icon: 'fa-circle-exclamation' });
         }
     };
 
@@ -211,7 +219,7 @@ export function renderBalances() {
             }).join('');
         }
 
-        const isMe = currentUser && p.userId === currentUser.uid;
+        const isMe = state.currentUser && p.userId === state.currentUser.uid;
         const meBadge = isMe ? `<span class="me-badge">Me</span>` : '';
 
         // Generate transactions breakdown
@@ -544,8 +552,8 @@ export function renderSettleUp() {
 
     let resultsHtml = '';
 
-    if (currentUser && activeGroup.people && targetCur !== 'separate') {
-        const me = activeGroup.people.find(p => p.userId === currentUser.uid);
+    if (state.currentUser && activeGroup.people) {
+        const me = activeGroup.people.find(p => p.userId === state.currentUser.uid);
         if (me) {
             const myOwe = allTransactions.filter(t => t.from === me.id).reduce((sum, t) => sum + t.amount, 0);
             const myLent = allTransactions.filter(t => t.to === me.id).reduce((sum, t) => sum + t.amount, 0);
@@ -623,7 +631,7 @@ export function renderSettleUp() {
             const groupName = activeGroup.name || 'Trip';
             const venmoLink = cleanVenmo ? `https://venmo.com/?tx=pay&txn=pay&audience=private&recipients=${cleanVenmo}&amount=${t.amount.toFixed(2)}&note=${encodeURIComponent(groupName + ' Settlement')}` : null;
 
-            const isDebtorMe = currentUser && debtor?.userId === currentUser.uid;
+            const isDebtorMe = state.currentUser && debtor?.userId === state.currentUser.uid;
 
             return `
                             <div class="debtor-row" style="padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03);">

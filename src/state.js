@@ -2,16 +2,14 @@
 
 export let state = {
     activeGroupId: null,
-    groups: []
+    groups: [],
+    currentUser: null,
+    myUserId: localStorage.getItem('splitfool_user_id')
 };
 
-export let currentUser = null;
-
-// Fallback User ID for offline/unauthenticated users
-export let myUserId = localStorage.getItem('splitfool_user_id');
-if (!myUserId) {
-    myUserId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-    localStorage.setItem('splitfool_user_id', myUserId);
+if (!state.myUserId) {
+    state.myUserId = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    localStorage.setItem('splitfool_user_id', state.myUserId);
 }
 
 // Keep track of our local cache
@@ -22,11 +20,11 @@ export function saveSavedGroupIds() {
 }
 
 export function setCurrentUser(user) {
-    currentUser = user;
+    state.currentUser = user;
     if (user) {
-        myUserId = user.uid;
+        state.myUserId = user.uid;
     } else {
-        myUserId = localStorage.getItem('splitfool_user_id');
+        state.myUserId = localStorage.getItem('splitfool_user_id');
     }
 }
 
@@ -66,7 +64,7 @@ export function isGroupAdmin(group) {
     if (!group.creatorId) return true;
 
     // If logged in, check UID
-    if (currentUser && group.creatorId === currentUser.uid) return true;
+    if (state.currentUser && group.creatorId === state.currentUser.uid) return true;
 
     // IMPORTANT: Removing fallback to localStorage user ID for authorization
     // relying on localStorage for admin privileges is an IDOR vulnerability.

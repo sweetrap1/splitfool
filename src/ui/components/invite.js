@@ -4,6 +4,7 @@ import { state, savedGroupIds, saveSavedGroupIds, setActiveGroup } from '../../s
 import { subscribeToGroup } from '../../api/groups.js';
 import { claimPersonForInvite } from '../../api/auth.js';
 import { escapeHTML } from '../../utils/helpers.js';
+import { showAlert } from '../../utils/dialogs.js';
 
 export async function processPendingInvite(user, renderAll) {
     const pendingCode = localStorage.getItem('splitfool_pending_invite');
@@ -22,48 +23,48 @@ export async function handleInviteFlow(groupId, user, renderAll) {
     try {
         const docRef = await db.collection('groups').doc(groupId).get();
         if (!docRef.exists) {
-            alert(`Invite link invalid: Trip '${groupId}' was not found.`);
+            showAlert('Invalid Invite', `Invite link invalid: Trip '${groupId}' was not found.`, { icon: 'fa-circle-exclamation' });
             return;
         }
 
         const groupData = docRef.data();
 
-        // 1. If user already claimed someone in this group, just join it silently
+        // 1. Already a member — join silently
         const alreadyClaimed = groupData.people.some(p => p.userId === user.uid);
         if (alreadyClaimed) {
-            await finalizeJoin(groupId, renderAll);
+            await finalizeJoin(groupId, user.uid, renderAll);
             return;
         }
 
-        // 2. If no people in the group yet, auto-join as a new person based on Google profile
+        // 2. Empty group — auto-add as new person
         if (!groupData.people || groupData.people.length === 0) {
-            console.log(`Auto-joining ${user.displayName} to empty group ${groupId}`);
-            const id = 'p_' + Date.now();
             const newPerson = {
-                id,
+                id: crypto.randomUUID(),
                 name: user.displayName || 'Anonymous',
                 venmoUsername: '',
                 userId: user.uid
             };
             await db.collection('groups').doc(groupId).update({
-                people: window.firebase.firestore.FieldValue.arrayUnion(newPerson)
+                people: window.firebase.firestore.FieldValue.arrayUnion(newPerson),
+                memberIds: window.firebase.firestore.FieldValue.arrayUnion(user.uid)
             });
-            await finalizeJoin(groupId, renderAll);
+            await finalizeJoin(groupId, user.uid, renderAll);
             return;
         }
 
-        // 3. Auto-match by name if possible
+        // 3. Auto-match by display name
         const userName = user.displayName ? user.displayName.toLowerCase().trim() : '';
-        const unclaimedMatch = groupData.people.find(p => !p.userId && p.name.toLowerCase().trim() === userName);
+        const unclaimedMatch = groupData.people.find(
+            p => !p.userId && p.name.toLowerCase().trim() === userName
+        );
 
         if (unclaimedMatch) {
-            console.log(`Auto-claiming profile for ${user.displayName}`);
             await claimPersonForInvite(groupId, unclaimedMatch.id, user);
-            await finalizeJoin(groupId, renderAll);
+            await finalizeJoin(groupId, user.uid, renderAll);
             return;
         }
 
-        // 4. Modal Fallbacks
+        // 4. Prompt user to pick a spot or join fresh
         const unclaimedPeople = groupData.people.filter(p => !p.userId);
         if (unclaimedPeople.length > 0) {
             showClaimModal(groupId, groupData, user, unclaimedPeople, renderAll);
@@ -71,11 +72,11 @@ export async function handleInviteFlow(groupId, user, renderAll) {
             showWelcomeJoinModal(groupId, groupData, user, renderAll);
         }
     } catch (e) {
-        console.error("Error handling invite flow:", e);
+        console.error('Error handling invite flow:', e);
     }
 }
 
-async function finalizeJoin(groupId, renderAll) {
+async function finalizeJoin(groupId, uid, renderAll) {
     if (!savedGroupIds.includes(groupId)) {
         savedGroupIds.push(groupId);
         saveSavedGroupIds();
@@ -128,10 +129,10 @@ function showClaimModal(groupId, groupData, user, unclaimedPeople, renderAll) {
 
             try {
                 await claimPersonForInvite(groupId, selectedCardId, user);
-                await finalizeJoin(groupId, renderAll);
+                await finalizeJoin(groupId, user.uid, renderAll);
                 modal.classList.remove('active');
             } catch (e) {
-                alert("Error claiming profile.");
+                showAlert('Error', 'Error claiming profile: ' + e.message, { icon: 'fa-circle-exclamation' });
             } finally {
                 confirmBtn.disabled = false;
                 confirmBtn.innerHTML = '<i class="fa-solid fa-hand"></i> Claim This Spot';
@@ -168,7 +169,7 @@ function showWelcomeJoinModal(groupId, groupData, user, renderAll) {
         confirmBtn.onclick = async () => {
             const name = nameInput ? nameInput.value.trim() : '';
             if (!name) {
-                alert("Please enter a name.");
+                showAlert('Name Required', 'Please enter your name.', { icon: 'fa-user-tag' });
                 return;
             }
 
@@ -179,23 +180,23 @@ function showWelcomeJoinModal(groupId, groupData, user, renderAll) {
             confirmBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Joining...';
 
             try {
-                const id = 'p_' + Date.now();
                 const newPerson = {
-                    id,
+                    id: crypto.randomUUID(),
                     name,
                     venmoUsername: venmo,
                     userId: user.uid
                 };
 
                 await db.collection('groups').doc(groupId).update({
-                    people: window.firebase.firestore.FieldValue.arrayUnion(newPerson)
+                    people: window.firebase.firestore.FieldValue.arrayUnion(newPerson),
+                    memberIds: window.firebase.firestore.FieldValue.arrayUnion(user.uid)
                 });
 
-                await finalizeJoin(groupId, renderAll);
+                await finalizeJoin(groupId, user.uid, renderAll);
                 modal.classList.remove('active');
             } catch (e) {
                 console.error(e);
-                alert("Error joining group.");
+                showAlert('Error', 'Error joining group: ' + e.message, { icon: 'fa-circle-exclamation' });
             } finally {
                 confirmBtn.disabled = false;
                 confirmBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Join Trip';

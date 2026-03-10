@@ -70,6 +70,19 @@ export function renderGroupSelector(onGroupChange) {
         select.value = currentActiveId;
     }
 
+    // Toggle Group Admin vs Member controls
+    const activeGroup = getActiveGroup();
+    const isAdmin = isGroupAdmin(activeGroup);
+    const hasGroups = state.groups.length > 0;
+
+    const editBtn = document.getElementById('edit-group-btn');
+    const deleteBtn = document.getElementById('delete-group-btn');
+    const leaveBtn = document.getElementById('leave-group-btn');
+
+    if (editBtn) editBtn.style.display = (isAdmin && hasGroups) ? 'inline-flex' : 'none';
+    if (deleteBtn) deleteBtn.style.display = (isAdmin && hasGroups) ? 'inline-flex' : 'none';
+    if (leaveBtn) leaveBtn.style.display = (!isAdmin && hasGroups && activeGroup.id !== 'no_groups' && activeGroup.id !== 'loading') ? 'inline-flex' : 'none';
+
     // Reset settle mode when group changes (only attach listener once per element)
     if (!select._groupSwitchListenerAttached) {
         select._groupSwitchListenerAttached = true;

@@ -36,19 +36,6 @@
 
             <div class="auth-content">
                 <div class="auth-section">
-                    <label class="section-label">Join a Trip</label>
-                    <div class="join-group-row">
-                        <input type="text" id="login-join-code" placeholder="ENTER TRIP CODE" maxlength="8"
-                            style="text-transform: uppercase;">
-                        <button class="btn primary" id="login-join-btn">Join</button>
-                    </div>
-                </div>
-
-                <div class="auth-divider">
-                    <span class="divider-text">OR</span>
-                </div>
-
-                <div class="auth-section">
                     <label class="section-label">Your Dashboard</label>
                     <button class="btn primary google-btn" id="google-login-btn">
                         <i class="fa-brands fa-google"></i> Sign in with Google
@@ -231,7 +218,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Add Person</h3>
-                <button class="close-btn"><i class="fa-solid fa-times"></i></button>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -255,7 +242,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Edit Person</h3>
-                <button class="close-btn"><i class="fa-solid fa-times"></i></button>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="edit-person-id">
@@ -280,7 +267,7 @@
         <div class="modal-content large">
             <div class="modal-header">
                 <h3 id="expense-modal-title">Add Expense</h3>
-                <button class="close-btn"><i class="fa-solid fa-times"></i></button>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="expense-id">
@@ -481,7 +468,7 @@
             <div class="modal-footer">
                 <button class="btn secondary close-modal-btn">Cancel</button>
                 <button class="btn outline" id="confirm-delete-group-btn"
-                    style="border-color: var(--danger); color: var(--danger);">Delete Permanentely</button>
+                    style="border-color: var(--danger); color: var(--danger);">Delete Permanently</button>
             </div>
         </div>
     </div>
@@ -511,7 +498,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Join an Existing Trip</h3>
-                <button class="close-modal-btn">&times;</button>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -577,6 +564,7 @@
                     <p id="invite-claim-group-name"
                         style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;"></p>
                 </div>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <p style="margin-bottom: 1.25rem; color: var(--text-muted); font-size: 0.95rem;">
@@ -608,6 +596,7 @@
                     <p id="invite-join-group-name"
                         style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;"></p>
                 </div>
+                <button class="close-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <p style="margin-bottom: 1.25rem; color: var(--text-muted); font-size: 0.95rem;">

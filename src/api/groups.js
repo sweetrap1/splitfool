@@ -1,12 +1,11 @@
 // Groups API
 import { db } from '../firebase-init.js';
-import { state, savedGroupIds, saveSavedGroupIds, myUserId, currentUser, setActiveGroup } from '../state.js';
+import { state, savedGroupIds, saveSavedGroupIds, setActiveGroup } from '../state.js';
 import { generateRoomCode } from '../utils/helpers.js';
 
 let unsubscribeListeners = {};
 let userGroupsUnsubscribe = null;
 
-// The UI module will inject the renderAll function here or listen to events
 export let onStateChanged = () => { };
 export function registerRenderCallback(cb) {
     onStateChanged = cb;
@@ -14,19 +13,24 @@ export function registerRenderCallback(cb) {
 
 export async function createNewGroup(name, options = {}) {
     const roomCode = generateRoomCode();
+    const creatorUid = state.currentUser ? state.currentUser.uid : state.myUserId;
+
     const newGroup = {
         id: roomCode,
         name: name,
         people: [{
-            id: 'p_' + Date.now(),
-            name: currentUser ? currentUser.displayName : 'Anonymous',
-            userId: currentUser ? currentUser.uid : myUserId,
+            id: crypto.randomUUID(),
+            name: state.currentUser ? state.currentUser.displayName : 'Anonymous',
+            userId: creatorUid,
             venmoUsername: ''
         }],
         expenses: [],
-        creatorId: currentUser ? currentUser.uid : myUserId,
-        creatorName: currentUser ? currentUser.displayName : 'Anonymous',
-        creatorEmail: currentUser ? currentUser.email : null,
+        creatorId: creatorUid,
+        creatorName: state.currentUser ? state.currentUser.displayName : 'Anonymous',
+        creatorEmail: state.currentUser ? state.currentUser.email : null,
+        // memberIds is a flat array of UIDs — used by Firestore rules to check
+        // membership without iterating the people array (rules can't do that).
+        memberIds: [creatorUid],
         defaultCurrency: options?.defaultCurrency || 'USD',
         settleCurrency: options?.settleCurrency || 'USD',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -54,7 +58,7 @@ export function subscribeToGroup(groupId) {
                         state.groups.push(groupData);
                     }
                     onStateChanged();
-                    resolve(); // Resolve on first success
+                    resolve();
                 } else {
                     // Document deleted
                     state.groups = state.groups.filter(g => g.id !== groupId);
@@ -84,12 +88,14 @@ export async function syncUserGroups(uid) {
 
     if (!uid) return;
 
+    // Query on memberIds instead of creatorId so joined groups are also recovered.
+    // This requires a Firestore composite index: memberIds (array-contains) + createdAt.
     userGroupsUnsubscribe = db.collection('groups')
-        .where('creatorId', '==', uid)
+        .where('memberIds', 'array-contains', uid)
         .onSnapshot(snapshot => {
             let addedCount = 0;
             snapshot.docChanges().forEach(change => {
-                if (change.type === "added" || change.type === "modified") {
+                if (change.type === 'added' || change.type === 'modified') {
                     const docId = change.doc.id;
                     if (!savedGroupIds.includes(docId)) {
                         savedGroupIds.push(docId);
@@ -117,7 +123,6 @@ export async function updateGroup(groupId, newName, options = {}) {
 export async function deleteGroup(groupId) {
     await db.collection('groups').doc(groupId).delete();
 
-    // Remove from local known list immediately for snappier UI
     const index = savedGroupIds.indexOf(groupId);
     if (index > -1) {
         savedGroupIds.splice(index, 1);
@@ -128,14 +133,21 @@ export async function deleteGroup(groupId) {
 export async function saveGroupState(activeGroup) {
     if (activeGroup && activeGroup.id && activeGroup.id !== 'loading' && activeGroup.id !== 'offline_error' && activeGroup.id !== 'no_groups') {
         if (!activeGroup.creatorId) {
-            if (currentUser) {
-                activeGroup.creatorId = currentUser.uid;
-                activeGroup.creatorName = currentUser.displayName;
-                activeGroup.creatorEmail = currentUser.email;
+            if (state.currentUser) {
+                activeGroup.creatorId = state.currentUser.uid;
+                activeGroup.creatorName = state.currentUser.displayName;
+                activeGroup.creatorEmail = state.currentUser.email;
             } else {
-                activeGroup.creatorId = myUserId;
+                activeGroup.creatorId = state.myUserId;
                 activeGroup.creatorName = 'Anonymous';
             }
+        }
+
+        // Ensure memberIds always exists (migration safety for old groups)
+        if (!activeGroup.memberIds) {
+            activeGroup.memberIds = activeGroup.people
+                .filter(p => p.userId)
+                .map(p => p.userId);
         }
 
         return db.runTransaction(async (transaction) => {
@@ -147,7 +159,44 @@ export async function saveGroupState(activeGroup) {
                 return;
             }
             transaction.update(groupRef, activeGroup);
-        }).catch(err => console.error("Transaction failed: ", err));
+        }).catch(err => console.error('Transaction failed: ', err));
+    }
+}
+
+/**
+ * Adds a UID to the group's flat memberIds array (used by Firestore rules).
+ * Must be called whenever a user joins a group via invite.
+ */
+export async function addMemberToGroup(groupId, uid) {
+    await db.collection('groups').doc(groupId).update({
+        memberIds: firebase.firestore.FieldValue.arrayUnion(uid)
+    });
+}
+
+export async function leaveGroup(groupId, uid) {
+    if (!groupId || !uid) return;
+
+    // Use a transaction to safely remove the user from people/memberIds
+    await db.runTransaction(async (transaction) => {
+        const ref = db.collection('groups').doc(groupId);
+        const doc = await transaction.get(ref);
+        if (!doc.exists) return;
+
+        const data = doc.data();
+        const updatedPeople = (data.people || []).filter(p => p.userId !== uid);
+        const updatedMemberIds = (data.memberIds || []).filter(id => id !== uid);
+
+        transaction.update(ref, {
+            people: updatedPeople,
+            memberIds: updatedMemberIds
+        });
+    });
+
+    // Remove from local known list
+    const index = savedGroupIds.indexOf(groupId);
+    if (index > -1) {
+        savedGroupIds.splice(index, 1);
+        saveSavedGroupIds();
     }
 }
 
@@ -156,7 +205,7 @@ export async function updateGroupLock(groupId, isLocked) {
     try {
         await db.collection('groups').doc(groupId).update({ isLocked: isLocked });
     } catch (e) {
-        console.error("Failed to update group lock:", e);
+        console.error('Failed to update group lock:', e);
         throw e;
     }
 }
