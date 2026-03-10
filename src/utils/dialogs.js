@@ -13,6 +13,7 @@ const messageEl = document.getElementById('dialog-message');
 const iconEl = document.getElementById('dialog-icon');
 const cancelBtn = document.getElementById('dialog-cancel-btn');
 const confirmBtn = document.getElementById('dialog-confirm-btn');
+const dialogFooter = confirmBtn?.closest('.modal-footer');
 
 let dialogResolve = null;
 
@@ -51,11 +52,13 @@ function _openDialog(title, message, options = {}) {
 
 export function showConfirm(title, message, options = {}) {
     if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    if (dialogFooter) dialogFooter.style.justifyContent = 'flex-end';
     return _openDialog(title, message, options);
 }
 
 export function showAlert(title, message, options = {}) {
     if (cancelBtn) cancelBtn.style.display = 'none';
+    if (dialogFooter) dialogFooter.style.justifyContent = 'center';
     if (confirmBtn) confirmBtn.textContent = options.confirmText || 'OK';
     return _openDialog(title, message, { ...options, confirmText: options.confirmText || 'OK' });
 }

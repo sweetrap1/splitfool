@@ -457,7 +457,7 @@ export function renderExpenses() {
         if (addExpenseBtn) addExpenseBtn.style.display = 'inline-flex';
     }
 
-    const allExpenses = activeGroup.expenses.filter(e => !e.isSettlement && !e.id.startsWith('set_'));
+    const allExpenses = activeGroup.expenses.filter(e => !e.isSettlement && !e.id?.startsWith('set_'));
     const activeExpenses = allExpenses.filter(e => !e.isArchived);
     const archivedExpenses = allExpenses.filter(e => e.isArchived);
 

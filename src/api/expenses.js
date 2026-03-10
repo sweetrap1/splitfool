@@ -36,6 +36,7 @@ export async function deleteExpense(expenseId) {
 export async function archiveSettledExpenses() {
     const activeGroup = getActiveGroup();
     if (!activeGroup.id) return;
+    if (!activeGroup.expenses || activeGroup.expenses.length === 0) return;
 
     let didChange = false;
     activeGroup.expenses = activeGroup.expenses.map(e => {

@@ -258,9 +258,10 @@ export function renderBalances() {
         const isMe = state.currentUser && p.userId === state.currentUser.uid;
         const meBadge = isMe ? `<span class="me-badge">Me</span>` : '';
 
-        // Generate transactions breakdown
+        // Generate transactions breakdown (exclude archived expenses)
         const transactions = [];
         activeGroup.expenses.forEach(e => {
+            if (e.isArchived) return;
             const cur = e.currency || 'USD';
             const eAmount = Number(e.amount) || 0;
             const payer = e.payers?.find(pay => pay.personId === p.id);
@@ -443,9 +444,13 @@ export function renderSettleUp() {
     if (targetCur === 'separate' || !activeGroup.expenses || activeGroup.expenses.length === 0) {
         breakdownContainer?.classList.add('hidden');
     } else {
+        const activeOnlyExpenses = activeGroup.expenses.filter(e => !e.isArchived);
+        if (activeOnlyExpenses.length === 0) {
+            breakdownContainer?.classList.add('hidden');
+        } else {
         breakdownContainer?.classList.remove('hidden');
         const groupTotals = {};
-        activeGroup.expenses.forEach(e => {
+        activeOnlyExpenses.forEach(e => {
             const cur = e.currency || 'USD';
             if (!groupTotals[cur]) groupTotals[cur] = 0;
             groupTotals[cur] += Number(e.amount) || 0;
@@ -492,7 +497,8 @@ export function renderSettleUp() {
         `;
         bHtml += '</table>';
         if (breakdownList) breakdownList.innerHTML = bHtml;
-    }
+        } // end else (activeOnlyExpenses.length > 0)
+    } // end else (not separate mode)
 
     let allTransactions = [];
     if (targetCur === 'separate') {
@@ -548,7 +554,7 @@ export function renderSettleUp() {
         // 3. Subtract all existing settlements from this fixed plan (Simplified mode only)
         // Direct mode already handled them in the call above.
         if (shouldSimplify) {
-            const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement);
+            const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement && !e.isArchived);
             settlements.forEach(s => {
                 const sCur = s.currency || 'USD';
                 let sAmountInTarget = Number(s.amount) || 0;
@@ -740,7 +746,7 @@ export function renderSettleUp() {
         ` + resultsHtml;
     }
 
-    const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement);
+    const settlements = (activeGroup.expenses || []).filter(e => e.isSettlement && !e.isArchived);
     let settlementsHtml = '';
     if (settlements.length > 0) {
         settlementsHtml = `
@@ -772,7 +778,8 @@ function renderMemberBreakdown(activeGroup, balances, targetCur, manualExchangeR
     const list = document.getElementById('member-breakdown-list');
     if (!section || !list) return;
 
-    if (!activeGroup.expenses || activeGroup.expenses.length === 0) {
+    const activeExpensesForBreakdown = (activeGroup.expenses || []).filter(e => !e.isArchived && !e.isSettlement && !e.id?.startsWith('set_'));
+    if (activeExpensesForBreakdown.length === 0) {
         section.classList.add('hidden');
         return;
     }
@@ -808,6 +815,7 @@ function renderMemberBreakdown(activeGroup, balances, targetCur, manualExchangeR
 
         const totals = { paid: {}, owed: {} };
         activeGroup.expenses.forEach(e => {
+            if (e.isArchived) return; // Exclude archived from current-period totals
             const cur = e.currency || 'USD';
             if (!totals.paid[cur]) totals.paid[cur] = 0;
             if (!totals.owed[cur]) totals.owed[cur] = 0;
