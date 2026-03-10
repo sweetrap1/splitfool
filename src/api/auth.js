@@ -41,7 +41,7 @@ export async function joinGroupWithCode(code) {
  * Also adds the user's UID to the flat memberIds array so Firestore
  * rules permit future writes.
  */
-export async function claimPersonForInvite(groupId, personId, user) {
+export async function claimPersonForInvite(groupId, personId, user, photoURL) {
     await db.runTransaction(async (t) => {
         const ref = db.collection('groups').doc(groupId);
         const doc = await t.get(ref);
@@ -54,6 +54,7 @@ export async function claimPersonForInvite(groupId, personId, user) {
                 throw new Error('This profile is already claimed.');
             }
             groupData.people[pIndex].userId = user.uid;
+            if (photoURL) groupData.people[pIndex].photoURL = photoURL;
 
             // Ensure memberIds exists and add the new uid atomically
             const existingMemberIds = groupData.memberIds || groupData.people.filter(p => p.userId).map(p => p.userId);

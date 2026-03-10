@@ -51,11 +51,12 @@ export async function editPerson(id, newName, newVenmo) {
     }
 }
 
-export async function claimPerson(personId, userId) {
+export async function claimPerson(personId, userId, photoURL) {
     const activeGroup = getActiveGroup();
     const person = activeGroup.people.find(p => p.id === personId);
     if (person && !person.userId) {
         person.userId = userId;
+        if (photoURL) person.photoURL = photoURL;
         // Keep memberIds in sync
         if (!activeGroup.memberIds) activeGroup.memberIds = [];
         if (!activeGroup.memberIds.includes(userId)) {

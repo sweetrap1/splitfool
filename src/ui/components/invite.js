@@ -42,7 +42,8 @@ export async function handleInviteFlow(groupId, user, renderAll) {
                 id: crypto.randomUUID(),
                 name: user.displayName || 'Anonymous',
                 venmoUsername: '',
-                userId: user.uid
+                userId: user.uid,
+                photoURL: user.photoURL || null
             };
             await db.collection('groups').doc(groupId).update({
                 people: window.firebase.firestore.FieldValue.arrayUnion(newPerson),
@@ -59,7 +60,7 @@ export async function handleInviteFlow(groupId, user, renderAll) {
         );
 
         if (unclaimedMatch) {
-            await claimPersonForInvite(groupId, unclaimedMatch.id, user);
+            await claimPersonForInvite(groupId, unclaimedMatch.id, user, user.photoURL);
             await finalizeJoin(groupId, user.uid, renderAll);
             return;
         }
@@ -184,7 +185,8 @@ function showWelcomeJoinModal(groupId, groupData, user, renderAll) {
                     id: crypto.randomUUID(),
                     name,
                     venmoUsername: venmo,
-                    userId: user.uid
+                    userId: user.uid,
+                    photoURL: user.photoURL || null
                 };
 
                 await db.collection('groups').doc(groupId).update({

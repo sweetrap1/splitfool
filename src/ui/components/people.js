@@ -107,10 +107,19 @@ export function renderPeople() {
             controlsHtml += `<button class="btn danger sm icon-btn" onclick="removePersonUI('${p.id}')" title="Remove"><i class="fa-solid fa-trash"></i></button>`;
         }
 
+        // For the current user, always pull the live Google photo so existing
+        // users see their picture immediately without re-claiming their slot.
+        const photoSrc = isMe
+            ? (state.currentUser?.photoURL || p.photoURL || null)
+            : (p.photoURL || null);
+
         return `
             <div class="card person-card">
                 <div class="person-info-container">
-                    <div class="avatar">${char}</div>
+                    ${photoSrc
+                        ? `<img src="${escapeHTML(photoSrc)}" alt="${escapeHTML(p.name)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(255,255,255,0.15);">`
+                        : `<div class="avatar">${char}</div>`
+                    }
                     <div class="person-details">
                         <div class="person-name-row">
                             <span class="person-name">${escapeHTML(p.name)}</span>
@@ -182,6 +191,6 @@ async function claimPersonUI(id) {
     });
 
     if (confirmed) {
-        await claimPerson(id, state.currentUser.uid);
+        await claimPerson(id, state.currentUser.uid, state.currentUser.photoURL);
     }
 }
