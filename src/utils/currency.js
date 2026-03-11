@@ -65,3 +65,43 @@ export async function fetchExchangeRate(onSuccess) {
         isFetchingRate = false;
     }
 }
+
+/**
+ * Guesses the user's local currency based on browser locale.
+ * Fallback to USD.
+ */
+export function getDetectedCurrency() {
+    // Check cache first
+    const cached = localStorage.getItem('splitfool_detected_currency');
+    if (cached) return cached;
+
+    try {
+        const locale = navigator.language || 'en-US';
+        // Handle formats like en-US, en_US, en, etc.
+        const parts = locale.replace('_', '-').split('-');
+        const region = parts.length > 1 ? parts[1].toUpperCase() : null;
+        const lang = parts[0].toLowerCase();
+        
+        const regionToCurrency = {
+            'US': 'USD', 'MX': 'MXN', 'GB': 'GBP', 'CA': 'CAD', 'AU': 'AUD', 
+            'JP': 'JPY', 'IN': 'INR', 'CN': 'CNY', 'BR': 'BRL', 'AE': 'AED',
+            'DE': 'EUR', 'FR': 'EUR', 'IT': 'EUR', 'ES': 'EUR', 'NL': 'EUR', 'IE': 'EUR',
+            'PH': 'PHP', 'ID': 'IDR', 'TH': 'THB', 'MY': 'MYR', 'VN': 'VND', 'SG': 'SGD'
+        };
+        
+        let detected = 'USD';
+        if (region && regionToCurrency[region]) {
+            detected = regionToCurrency[region];
+        } else {
+            // Language-only fallbacks
+            if (lang === 'es') detected = 'MXN';
+            else if (lang === 'ja') detected = 'JPY';
+            else if (lang === 'hi') detected = 'INR';
+        }
+
+        localStorage.setItem('splitfool_detected_currency', detected);
+        return detected;
+    } catch (e) {
+        return 'USD';
+    }
+}

@@ -3,6 +3,7 @@
 import { createNewGroup, updateGroup, deleteGroup, leaveGroup } from '../../api/groups.js';
 import { getActiveGroup, isGroupAdmin, state } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
+import { getDetectedCurrency } from '../../utils/currency.js';
 import { showAlert, showConfirm } from '../../utils/dialogs.js';
 import { calculateBalances } from '../../utils/math.js';
 import { updateModalBodyClass } from '../navigation.js';
@@ -15,9 +16,10 @@ export function initGroupsUI(renderAll) {
     const addGroupModal = document.getElementById('group-modal');
     if (addGroupModal) {
         document.getElementById('add-group-btn').addEventListener('click', () => {
+            const defaultCur = getDetectedCurrency();
             document.getElementById('group-name').value = '';
-            document.getElementById('group-default-currency').value = 'USD';
-            document.getElementById('group-settle-currency').value = 'USD';
+            document.getElementById('group-default-currency').value = defaultCur;
+            document.getElementById('group-settle-currency').value = defaultCur;
             addGroupModal.classList.add('active');
             updateModalBodyClass();
         });

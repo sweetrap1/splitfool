@@ -32,6 +32,13 @@ export function setActiveGroup(groupId) {
     state.activeGroupId = groupId;
 }
 
+export function clearStateForLogout() {
+    state.groups = [];
+    state.activeGroupId = null;
+    savedGroupIds = [];
+    localStorage.removeItem('splitfool_saved_groups');
+}
+
 export function getActiveGroup() {
     if (state.activeGroupId) {
         const group = state.groups.find(g => g.id === state.activeGroupId);

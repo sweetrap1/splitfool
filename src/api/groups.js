@@ -1,6 +1,6 @@
 // Groups API
 import { db } from '../firebase-init.js';
-import { state, savedGroupIds, saveSavedGroupIds, setActiveGroup } from '../state.js';
+import { state, savedGroupIds, saveSavedGroupIds, setActiveGroup, clearStateForLogout } from '../state.js';
 import { generateRoomCode } from '../utils/helpers.js';
 
 let unsubscribeListeners = {};
@@ -9,6 +9,15 @@ let userGroupsUnsubscribe = null;
 export let onStateChanged = () => { };
 export function registerRenderCallback(cb) {
     onStateChanged = cb;
+}
+
+export function clearAllSubscriptions() {
+    Object.values(unsubscribeListeners).forEach(unsub => unsub());
+    unsubscribeListeners = {};
+    if (userGroupsUnsubscribe) {
+        userGroupsUnsubscribe();
+        userGroupsUnsubscribe = null;
+    }
 }
 
 export async function createNewGroup(name, options = {}) {
@@ -81,12 +90,12 @@ export function subscribeToGroup(groupId) {
 }
 
 export async function syncUserGroups(uid) {
-    if (userGroupsUnsubscribe) {
-        userGroupsUnsubscribe();
-        userGroupsUnsubscribe = null;
+    if (!uid) {
+        clearAllSubscriptions();
+        clearStateForLogout();
+        onStateChanged();
+        return;
     }
-
-    if (!uid) return;
 
     // Query on memberIds instead of creatorId so joined groups are also recovered.
     // This requires a Firestore composite index: memberIds (array-contains) + createdAt.
@@ -107,6 +116,12 @@ export async function syncUserGroups(uid) {
 
             if (addedCount > 0) {
                 saveSavedGroupIds();
+                
+                // If we don't have an active group yet, pick the first one we find
+                if (!state.activeGroupId && savedGroupIds.length > 0) {
+                    setActiveGroup(savedGroupIds[0]);
+                }
+                
                 onStateChanged();
             }
         });

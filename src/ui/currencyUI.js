@@ -1,4 +1,4 @@
-import { CURRENCY_NAMES } from '../utils/currency.js';
+import { CURRENCY_NAMES, getDetectedCurrency } from '../utils/currency.js';
 import { escapeHTML } from '../utils/helpers.js';
 
 /**
@@ -21,21 +21,41 @@ export function populateAllCurrencyDropdowns() {
         'edit-group-settle-currency'
     ];
 
+    const defaultCurrency = getDetectedCurrency();
+
     const standardOptionsHtml = currencyEntries.map(([code, name]) => 
-        `<option value="${escapeHTML(code)}" ${code === 'USD' ? 'selected' : ''}>${escapeHTML(code)} - ${escapeHTML(name)}</option>`
+        `<option value="${escapeHTML(code)}" ${code === defaultCurrency ? 'selected' : ''}>${escapeHTML(code)} - ${escapeHTML(name)}</option>`
     ).join('');
 
     const settleOptionsHtml = currencyEntries.map(([code, name]) => 
-        `<option value="${escapeHTML(code)}" ${code === 'USD' ? 'selected' : ''}>${escapeHTML(code)} - Simplified</option>`
+        `<option value="${escapeHTML(code)}" ${code === defaultCurrency ? 'selected' : ''}>${escapeHTML(code)} - Simplified</option>`
     ).join('') + `<option value="separate">Separate Currencies</option>`;
 
-    standardSelects.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = standardOptionsHtml;
-    });
+    const setValues = () => {
+        standardSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerHTML = standardOptionsHtml;
+                // Force selection
+                el.value = defaultCurrency;
+                const opt = el.querySelector(`option[value="${defaultCurrency}"]`);
+                if (opt) opt.setAttribute('selected', 'selected');
+            }
+        });
 
-    settleSelects.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = settleOptionsHtml;
-    });
+        settleSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerHTML = settleOptionsHtml;
+                // Force selection
+                el.value = defaultCurrency;
+                const opt = el.querySelector(`option[value="${defaultCurrency}"]`);
+                if (opt) opt.setAttribute('selected', 'selected');
+            }
+        });
+    };
+
+    setValues();
+    // Second pass to ensure DOM catch-up / script overrides
+    setTimeout(setValues, 50);
 }

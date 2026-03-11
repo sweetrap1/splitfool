@@ -55,12 +55,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (appContainer) appContainer.classList.remove('hidden');
             showAuthStatus("Successfully signed in", "success", 2000);
 
+            // Re-sync dropdowns with current locale
+            populateAllCurrencyDropdowns();
+
             syncUserGroups(user.uid);
 
             // Check for pending invite (Claiming/Joining flow)
             import('./ui/components/invite.js').then(({ processPendingInvite }) => {
                 processPendingInvite(user, renderAll);
             }).catch(e => console.error("Invite processing error:", e));
+            
+            // Extra safety render to catch immediate syncs
+            setTimeout(renderAll, 1000);
         } else {
             console.log("Auth state change: No user");
             syncUserGroups(null);
