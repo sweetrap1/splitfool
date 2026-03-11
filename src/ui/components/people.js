@@ -5,6 +5,7 @@ import { getActiveGroup, state, isGroupAdmin } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { showConfirm, showAlert } from '../../utils/dialogs.js';
 import { calculateBalances } from '../../utils/math.js';
+import { updateModalBodyClass } from '../navigation.js';
 
 export function initPeopleUI() {
     const addPersonBtn = document.getElementById('add-person-btn');
@@ -20,6 +21,7 @@ export function initPeopleUI() {
             document.getElementById('person-name').value = '';
             document.getElementById('person-venmo').value = '';
             personModal.classList.add('active');
+            updateModalBodyClass();
         });
 
         document.getElementById('save-person-btn').addEventListener('click', async () => {
@@ -31,6 +33,7 @@ export function initPeopleUI() {
                 if (venmo && !venmo.startsWith('@')) venmo = '@' + venmo;
                 await addPerson(name, venmo);
                 personModal.classList.remove('active');
+                updateModalBodyClass();
             }
         });
     }
@@ -46,6 +49,7 @@ export function initPeopleUI() {
                 if (venmo && !venmo.startsWith('@')) venmo = '@' + venmo;
                 await editPerson(id, name, venmo);
                 editPersonModal.classList.remove('active');
+                updateModalBodyClass();
             }
         });
     }
@@ -144,6 +148,7 @@ function openEditPersonModal(id) {
         document.getElementById('edit-person-name').value = person.name;
         document.getElementById('edit-person-venmo').value = person.venmoUsername || '';
         document.getElementById('edit-person-modal').classList.add('active');
+        updateModalBodyClass();
     }
 }
 

@@ -12,6 +12,7 @@ import { initGroupsUI } from './ui/components/groups.js';
 import { initPeopleUI, renderPeople } from './ui/components/people.js';
 import { initExpensesUI, renderExpenses } from './ui/components/expenses.js';
 import { initSettleUpUI, renderBalances, renderSettleUp } from './ui/components/settleUp.js';
+import { populateAllCurrencyDropdowns } from './ui/currencyUI.js';
 
 // Global Render Function
 function renderAll() {
@@ -88,6 +89,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         initPeopleUI(renderAll);
         initExpensesUI(renderAll);
         initSettleUpUI(renderAll);
+
+        // Populate all currency selectors from master list
+        populateAllCurrencyDropdowns();
 
         // Initial fetch for currency rates
         fetchExchangeRate(renderAll);

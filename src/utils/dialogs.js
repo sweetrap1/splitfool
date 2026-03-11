@@ -7,6 +7,8 @@
  * before a new dialog opens.
  */
 
+import { updateModalBodyClass } from '../ui/navigation.js';
+
 const modal = document.getElementById('custom-dialog-modal');
 const titleEl = document.getElementById('dialog-title');
 const messageEl = document.getElementById('dialog-message');
@@ -47,6 +49,7 @@ function _openDialog(title, message, options = {}) {
 
         dialogResolve = resolve;
         modal.classList.add('active');
+        updateModalBodyClass();
     });
 }
 
@@ -67,6 +70,7 @@ export function showAlert(title, message, options = {}) {
 if (cancelBtn) {
     cancelBtn.onclick = () => {
         modal.classList.remove('active');
+        updateModalBodyClass();
         if (dialogResolve) { dialogResolve(false); dialogResolve = null; }
     };
 }
@@ -74,6 +78,7 @@ if (cancelBtn) {
 if (confirmBtn) {
     confirmBtn.onclick = () => {
         modal.classList.remove('active');
+        updateModalBodyClass();
         if (dialogResolve) { dialogResolve(true); dialogResolve = null; }
     };
 }

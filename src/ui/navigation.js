@@ -101,14 +101,28 @@ export function initModals() {
     document.querySelectorAll('.close-btn, .close-modal-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const modal = btn.closest('.modal');
-            if (modal) modal.classList.remove('active');
+            if (modal) {
+                modal.classList.remove('active');
+                updateModalBodyClass();
+            }
         });
     });
+}
 
-    // Close on clicking outside the modal content
-    window.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) {
-            e.target.classList.remove('active');
-        }
-    });
+// Close on clicking outside the modal content
+window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('active');
+        updateModalBodyClass();
+    }
+});
+
+// Update body scroll lock based on if ANY modal is active
+export function updateModalBodyClass() {
+    const activeModal = document.querySelector('.modal.active');
+    if (activeModal) {
+        document.body.classList.add('modal-open');
+    } else {
+        document.body.classList.remove('modal-open');
+    }
 }

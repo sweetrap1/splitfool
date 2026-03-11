@@ -75,15 +75,15 @@
                         </button>
                     </div>
                 </div>
-                <div class="group-selector">
-                    <div style="display: flex; align-items: center; gap: 0.25rem;">
-                        <select id="active-group-select" class="group-dropdown" style="margin-bottom: 0;"></select>
-                        <button class="btn icon-btn" id="add-group-btn" title="Create New Group"
-                            style="color: var(--primary);">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
-                    </div>
-
+            </div>
+            <div class="group-selector">
+                <div class="group-selector-top" style="display: flex; gap: 0.5rem; width: 100%; align-items: center;">
+                    <select id="active-group-select" class="group-dropdown" style="margin-bottom: 0; flex: 1; min-width: 0;"></select>
+                    <button class="btn primary sm" id="add-group-btn" title="Create New Group" style="white-space: nowrap; flex-shrink: 0;">
+                        <i class="fa-solid fa-plus"></i> New Group
+                    </button>
+                </div>
+                <div class="group-controls">
                     <button class="btn icon-btn" id="edit-group-btn" title="Edit Group Name">
                         <i class="fa-solid fa-pen"></i>
                     </button>
@@ -105,13 +105,14 @@
                     </button>
                 </div>
             </div>
-            <nav>
-                <button class="nav-btn active" data-tab="people"><i class="fa-solid fa-users"></i> People</button>
-                <button class="nav-btn" data-tab="expenses"><i class="fa-solid fa-receipt"></i> Expenses</button>
-                <button class="nav-btn" data-tab="balances"><i class="fa-solid fa-scale-balanced"></i> Balances</button>
-                <button class="nav-btn" data-tab="settle"><i class="fa-solid fa-handshake"></i> Settle Up</button>
-            </nav>
         </header>
+
+        <nav>
+            <button class="nav-btn active" data-tab="people"><i class="fa-solid fa-users"></i> People</button>
+            <button class="nav-btn" data-tab="expenses"><i class="fa-solid fa-receipt"></i> Expenses</button>
+            <button class="nav-btn" data-tab="balances"><i class="fa-solid fa-scale-balanced"></i> Balances</button>
+            <button class="nav-btn" data-tab="settle"><i class="fa-solid fa-handshake"></i> Settle Up</button>
+        </nav>
 
         <main>
             <!-- People Tab -->
@@ -155,9 +156,8 @@
 
                 <div class="card exchange-rate-card" style="margin-bottom: 2rem;">
                     <h3><i class="fa-solid fa-earth-americas"></i> Settlement Options</h3>
-                    <div class="form-row"
-                        style="margin-top: 1.5rem; display: flex; gap: 1rem; align-items: flex-start;">
-                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <div class="form-row" style="margin-top: 1.5rem;">
+                        <div class="form-group half" style="margin-bottom: 0;">
                             <label for="settle-mode" style="font-size: 0.85rem; color: var(--text-muted);">Settle
                                 In</label>
                             <select id="settle-mode" style="width: 100%;">
@@ -166,7 +166,7 @@
                                 <!-- Dynamic combined options will render here -->
                             </select>
                         </div>
-                        <div class="form-group hidden" id="manual-rate-container" style="flex: 1; margin-bottom: 0;">
+                        <div class="form-group half hidden" id="manual-rate-container" style="margin-bottom: 0;">
                             <label for="manual-rate" style="font-size: 0.85rem; color: var(--text-muted);">Manual Rate
                                 (1 <span id="manual-rate-source"></span> = X <span
                                     id="manual-rate-target"></span>)</label>
@@ -291,23 +291,7 @@
                             <option value="CAD">CAD - Canadian Dollar</option>
                             <option value="CHF">CHF - Swiss Franc</option>
                             <option value="CNY">CNY - Chinese Yuan</option>
-                            <option value="HKD">HKD - Hong Kong Dollar</option>
-                            <option value="NZD">NZD - New Zealand Dollar</option>
-                            <option value="SEK">SEK - Swedish Krona</option>
-                            <option value="KRW">KRW - South Korean Won</option>
-                            <option value="SGD">SGD - Singapore Dollar</option>
-                            <option value="NOK">NOK - Norwegian Krone</option>
-                            <option value="MXN">MXN - Mexican Peso</option>
-                            <option value="INR">INR - Indian Rupee</option>
-                            <option value="RUB">RUB - Russian Ruble</option>
-                            <option value="ZAR">ZAR - South African Rand</option>
-                            <option value="TRY">TRY - Turkish Lira</option>
-                            <option value="BRL">BRL - Brazilian Real</option>
-                            <option value="TWD">TWD - New Taiwan Dollar</option>
-                            <option value="DKK">DKK - Danish Krone</option>
-                            <option value="PLN">PLN - Polish Zloty</option>
-                            <option value="THB">THB - Thai Baht</option>
-                            <option value="IDR">IDR - Indonesian Rupiah</option>
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
                 </div>
@@ -344,10 +328,10 @@
                     <h4>Split Options</h4>
                     <div class="split-tabs">
                         <button class="split-tab active" data-split="equal">Equal</button>
-                        <button class="split-tab" data-split="exact">Exact Amount</button>
-                        <button class="split-tab" data-split="percent">Percentage</button>
-                        <button class="split-tab" data-split="shares">Shares/Days</button>
-                        <button class="split-tab" data-split="paid_for">Paid for Someone</button>
+                        <button class="split-tab" data-split="exact">Exact</button>
+                        <button class="split-tab" data-split="percent">Percent</button>
+                        <button class="split-tab" data-split="shares">Shares</button>
+                        <button class="split-tab" data-split="paid_for">Paid For</button>
                     </div>
 
                     <div class="participants-list" id="split-participants">
@@ -382,22 +366,13 @@
                     <div class="form-group half">
                         <label for="group-default-currency">Default Expense Currency</label>
                         <select id="group-default-currency">
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="MXN">MXN - Mexican Peso</option>
-                            <option value="EUR">EUR - Euro</option>
-                            <option value="GBP">GBP - British Pound</option>
-                            <option value="CAD">CAD - Canadian Dollar</option>
-                            <option value="AUD">AUD - Australian Dollar</option>
-                            <option value="JPY">JPY - Japanese Yen</option>
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
                     <div class="form-group half">
                         <label for="group-settle-currency">Default Settlement Selection</label>
                         <select id="group-settle-currency">
-                            <option value="USD">USD - Simplified</option>
-                            <option value="MXN">MXN - Simplified</option>
-                            <option value="EUR">EUR - Simplified</option>
-                            <option value="separate">Separate Currencies</option>
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
                 </div>
@@ -425,22 +400,13 @@
                     <div class="form-group half">
                         <label for="edit-group-default-currency">Default Expense Currency</label>
                         <select id="edit-group-default-currency">
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="MXN">MXN - Mexican Peso</option>
-                            <option value="EUR">EUR - Euro</option>
-                            <option value="GBP">GBP - British Pound</option>
-                            <option value="CAD">CAD - Canadian Dollar</option>
-                            <option value="AUD">AUD - Australian Dollar</option>
-                            <option value="JPY">JPY - Japanese Yen</option>
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
                     <div class="form-group half">
                         <label for="edit-group-settle-currency">Default Settlement Selection</label>
                         <select id="edit-group-settle-currency">
-                            <option value="USD">USD - Simplified</option>
-                            <option value="MXN">MXN - Simplified</option>
-                            <option value="EUR">EUR - Simplified</option>
-                            <option value="separate">Separate Currencies</option>
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
                 </div>

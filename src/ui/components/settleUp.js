@@ -330,17 +330,17 @@ export function renderBalances() {
         const breakdownHtml = transactions.length > 0 ? `
             <div id="breakdown_${p.id}" class="balance-breakdown hidden" style="width: 100%; box-sizing: border-box; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1rem; font-weight: 800; opacity: 0.8;">Detailed History</div>
-                <div class="balance-history-list" style="display: flex; flex-direction: column; gap: 4px;">
+                <div class="balance-history-list">
                     ${transactions.map(t => {
             const cls = t.net > 0 ? 'positive' : 'negative';
             const prefix = t.net > 0 ? '+' : '';
             return `
-                            <div class="balance-history-row" style="display: grid; grid-template-columns: 1fr auto 100px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); align-items: center; gap: 16px;">
-                                <div style="color: var(--text-main); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHTML(t.desc)}</div>
-                                <div style="color: var(--text-muted); font-size: 0.8rem; text-align: right;">
+                            <div class="balance-history-row">
+                                <div class="balance-history-desc">${escapeHTML(t.desc)}</div>
+                                <div class="balance-history-action">
                                     ${t.paid > 0 ? `Lent <span style="color: var(--success); font-weight: 600;">${formatMoney(t.paid, t.currency)}</span>` : `Owed <span style="color: var(--danger); font-weight: 600;">${formatMoney(t.owed, t.currency)}</span>`}
                                 </div>
-                                <div class="${cls}" style="font-weight: 800; text-align: right; font-size: 0.95rem;">${prefix}${formatMoney(t.net, t.currency)}</div>
+                                <div class="balance-history-net ${cls}">${prefix}${formatMoney(t.net, t.currency)}</div>
                             </div>
                         `;
         }).join('')}
@@ -349,7 +349,7 @@ export function renderBalances() {
         ` : '';
 
         return `
-            <div class="card person-card" style="margin-bottom: 1rem; cursor: pointer; padding: 1.25rem 1.5rem;" onclick="toggleBalanceBreakdown('${p.id}')">
+            <div class="card balance-item-card" style="margin-bottom: 1rem; cursor: pointer; padding: 1.25rem 1.5rem;" onclick="toggleBalanceBreakdown('${p.id}')">
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 20px;">
                     <div class="person-info" style="flex: 1; min-width: 0;">
                         <div class="avatar" style="width: 44px; height: 44px; font-size: 1.1rem; flex-shrink: 0;">${char}</div>

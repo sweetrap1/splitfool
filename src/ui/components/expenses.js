@@ -4,6 +4,7 @@ import { deleteExpense, addExpense, editExpense } from '../../api/expenses.js';
 import { getActiveGroup, state } from '../../state.js';
 import { escapeHTML } from '../../utils/helpers.js';
 import { showConfirm, showAlert } from '../../utils/dialogs.js';
+import { updateModalBodyClass } from '../navigation.js';
 
 let currentPayerMode = 'single'; // 'single' or 'multiple'
 let currentSplitMode = 'equal'; // equal, exact, percent, shares, paid_for
@@ -35,6 +36,7 @@ export function initExpensesUI(renderAll) {
 
             resetExpenseForm();
             expenseModal.classList.add('active');
+            updateModalBodyClass();
         });
 
         document.getElementById('save-expense-btn').addEventListener('click', async () => {
@@ -134,6 +136,7 @@ export function initExpensesUI(renderAll) {
                     await addExpense(expenseData);
                 }
                 expenseModal.classList.remove('active');
+                updateModalBodyClass();
             } catch (err) {
                 showAlert('Error', "Error saving expense: " + err.message, { icon: 'fa-circle-exclamation' });
                 console.error(err);
@@ -323,7 +326,7 @@ function renderSplitParticipants() {
 
         container.innerHTML = `
             <div class="form-group" style="margin-top: 1rem;">
-                <label>Who did you pay for?</label>
+                <label>Paid For</label>
                 <select id="paid-for-select" class="participant-input" style="margin-bottom: 1rem;" onchange="updateSplitSummary()">
                     ${otherPeople.map(p => `<option value="${escapeHTML(p.id)}">${escapeHTML(p.name)}</option>`).join('')}
                 </select>
@@ -638,6 +641,7 @@ function editExpenseUI(id) {
     if (!expense) return;
 
     document.getElementById('expense-modal').classList.add('active');
+    updateModalBodyClass();
     document.getElementById('expense-modal-title').textContent = 'Edit Expense';
 
     updatePayerDropdown();
