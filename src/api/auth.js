@@ -4,7 +4,6 @@ import { state, savedGroupIds, saveSavedGroupIds } from '../state.js';
 import { subscribeToGroup, addMemberToGroup } from './groups.js';
 
 export async function loginWithPopup() {
-    await auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
     return auth.signInWithPopup(provider);
 }
 

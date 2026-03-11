@@ -35,6 +35,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('splitfool_pending_invite', joinCode);
     }
 
+    // ── Handle iOS/Safari redirect login result ─────────────────────────────
+    // On iPhone, popups are blocked so we fall back to signInWithRedirect().
+    // After Google redirects back, we MUST call getRedirectResult() to complete
+    // the login — otherwise onAuthStateChanged fires as null and shows the
+    // login screen even though the user just authenticated.
+    let redirectResolved = false;
+    try {
+        const redirectResult = await auth.getRedirectResult();
+        if (redirectResult && redirectResult.user) {
+            console.log('Redirect sign-in completed for:', redirectResult.user.displayName);
+        }
+        redirectResolved = true;
+    } catch (err) {
+        console.warn('getRedirectResult error (non-fatal):', err.message);
+        redirectResolved = true;
+    }
+
     // Auth state listener
     auth.onAuthStateChanged(user => {
         setCurrentUser(user);

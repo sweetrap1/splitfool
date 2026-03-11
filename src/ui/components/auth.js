@@ -3,16 +3,42 @@
 import { loginWithPopup, loginWithRedirect, logout } from '../../api/auth.js';
 import { showAlert } from '../../utils/dialogs.js';
 
+// Detect iOS / Safari — these browsers block popups from Firebase
+function isIOSOrSafari() {
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+    return isIOS || isSafari;
+}
+
 export function initAuthUI(onAuthChange, renderAll) {
     const loginHandler = async () => {
         showAuthStatus('Initializing Google Login...', '');
         const googleBtn = document.getElementById('google-login-btn');
         if (googleBtn) googleBtn.disabled = true;
 
+        // On iOS/Safari, skip the popup entirely — it is always blocked.
+        // Go straight to redirect so the flow actually completes.
+        if (isIOSOrSafari()) {
+            showAuthStatus('Redirecting to Google...', '');
+            loginWithRedirect().catch(err => {
+                handleAuthError(err);
+                showAuthStatus('Login failed: ' + err.message, 'error');
+                if (googleBtn) googleBtn.disabled = false;
+            });
+            return;
+        }
+
         try {
             await loginWithPopup();
         } catch (error) {
-            if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+            // auth/popup-blocked, auth/cancelled-popup-request, auth/popup-closed-by-user
+            // all indicate the popup was suppressed — fall back to redirect.
+            if (
+                error.code === 'auth/popup-blocked' ||
+                error.code === 'auth/cancelled-popup-request' ||
+                error.code === 'auth/popup-closed-by-user'
+            ) {
                 showAuthStatus('Popup blocked. Redirecting...', '');
                 loginWithRedirect().catch(err => {
                     handleAuthError(err);
