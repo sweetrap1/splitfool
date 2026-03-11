@@ -18,18 +18,44 @@
     <!-- PWA Installation -->
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#111827">
 </head>
 
 <body>
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-card">
             <div class="auth-header">
-                <div class="logo large" style="flex-direction: column; gap: 8px;">
-                    <img src="icons/icon-192x192.png" alt="SplitFool Logo"
-                        style="width: 80px; height: 80px; border-radius: 20px;">
-                    SplitFool
+                <div class="logo large" style="flex-direction: column; gap: 12px;">
+                    <!-- Brand Icon: Split Fork -->
+                    <svg class="brand-icon-large" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="80" height="80" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="iconGradAuth" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" style="stop-color:#22d3ee"/>
+                          <stop offset="100%" style="stop-color:#06b6d4"/>
+                        </linearGradient>
+                        <filter id="glowAuth" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                      </defs>
+                      <rect width="72" height="72" rx="16" fill="rgba(17,24,39,0.7)"/>
+                      <!-- Stem -->
+                      <line x1="36" y1="58" x2="36" y2="36" stroke="url(#iconGradAuth)" stroke-width="4" stroke-linecap="round" filter="url(#glowAuth)"/>
+                      <!-- Left arm -->
+                      <line x1="36" y1="44" x2="18" y2="26" stroke="url(#iconGradAuth)" stroke-width="4" stroke-linecap="round" filter="url(#glowAuth)"/>
+                      <!-- Right arm -->
+                      <line x1="36" y1="44" x2="54" y2="26" stroke="url(#iconGradAuth)" stroke-width="4" stroke-linecap="round" filter="url(#glowAuth)"/>
+                      <!-- Left arrowhead -->
+                      <polyline points="12,29 18,26 21,33" fill="none" stroke="url(#iconGradAuth)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowAuth)"/>
+                      <!-- Right arrowhead -->
+                      <polyline points="60,29 54,26 51,33" fill="none" stroke="url(#iconGradAuth)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowAuth)"/>
+                      <!-- Up arrowhead (center) -->
+                      <polyline points="30,37 36,30 42,37" fill="none" stroke="url(#iconGradAuth)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowAuth)"/>
+                    </svg>
+                    <!-- Wordmark -->
+                    <span class="brand-wordmark-large">SplitFool</span>
                 </div>
                 <p class="auth-subtitle">Fair splitting. Modern tracking. Together.</p>
             </div>
@@ -59,8 +85,26 @@
         <header>
             <div class="header-top">
                 <div class="logo">
-                    <img src="icons/icon-192x192.png" alt="Logo"
-                        style="width: 24px; height: 24px; border-radius: 6px; margin-right: 8px;">
+                    <!-- Brand Icon: Split Fork (header) -->
+                    <svg class="brand-icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="30" height="30" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="iconGradHdr" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" style="stop-color:#22d3ee"/>
+                          <stop offset="100%" style="stop-color:#06b6d4"/>
+                        </linearGradient>
+                        <filter id="glowHdr" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                      </defs>
+                      <rect width="40" height="40" rx="9" fill="rgba(17,24,39,0.8)"/>
+                      <line x1="20" y1="33" x2="20" y2="21" stroke="url(#iconGradHdr)" stroke-width="2.8" stroke-linecap="round" filter="url(#glowHdr)"/>
+                      <line x1="20" y1="26" x2="10" y2="14" stroke="url(#iconGradHdr)" stroke-width="2.8" stroke-linecap="round" filter="url(#glowHdr)"/>
+                      <line x1="20" y1="26" x2="30" y2="14" stroke="url(#iconGradHdr)" stroke-width="2.8" stroke-linecap="round" filter="url(#glowHdr)"/>
+                      <polyline points="6,16 10,14 12,18" fill="none" stroke="url(#iconGradHdr)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowHdr)"/>
+                      <polyline points="34,16 30,14 28,18" fill="none" stroke="url(#iconGradHdr)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowHdr)"/>
+                      <polyline points="16,21 20,15 24,21" fill="none" stroke="url(#iconGradHdr)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowHdr)"/>
+                    </svg>
                     SplitFool
                 </div>
                 <div class="user-profile" id="user-profile">

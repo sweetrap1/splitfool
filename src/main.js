@@ -90,6 +90,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (loginBtn) loginBtn.classList.remove('hidden');
             if (userInfo) userInfo.classList.add('hidden');
 
+            // Re-enable login buttons in case they were disabled during a previous login attempt
+            const googleBtn = document.getElementById('google-login-btn');
+            if (googleBtn) googleBtn.disabled = false;
+
             if (authOverlay) authOverlay.classList.remove('hidden');
             if (appContainer) appContainer.classList.add('hidden');
         }

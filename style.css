@@ -80,8 +80,6 @@
 }
 
 .logo.large {
-    font-size: 3.8rem;
-    font-weight: 800;
     margin-bottom: 8px;
     justify-content: center;
     width: 100%;
@@ -401,13 +399,44 @@ header {
 .logo {
     font-size: 2rem;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #a855f7, #ec4899);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+/* Brand wordmark — auth screen (large) */
+.brand-wordmark-large {
+    font-size: 3.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-family: 'Outfit', sans-serif;
+}
+
+/* Ensure large logo icon + wordmark stack centered */
+.logo.large {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Smooth glow/pulse on the brand icon in auth screen */
+.brand-icon-large {
+    filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.5));
+    animation: iconPulse 3s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.45)); }
+    50%       { filter: drop-shadow(0 0 22px rgba(34, 211, 238, 0.75)); }
 }
 
 nav {

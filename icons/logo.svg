@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 90" width="280" height="90">
+  <defs>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a855f7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background pill -->
+  <rect x="0" y="0" width="280" height="90" rx="18" ry="18" fill="#111827"/>
+
+  <!-- Fork/split arrow icon -->
+  <!-- Center stem going up -->
+  <line x1="38" y1="62" x2="38" y2="40" stroke="url(#iconGrad)" stroke-width="3.5" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Left arm -->
+  <line x1="38" y1="48" x2="22" y2="34" stroke="url(#iconGrad)" stroke-width="3.5" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Right arm -->
+  <line x1="38" y1="48" x2="54" y2="34" stroke="url(#iconGrad)" stroke-width="3.5" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Left arrowhead -->
+  <polyline points="17,36 22,34 24,39" fill="none" stroke="url(#iconGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <!-- Right arrowhead -->
+  <polyline points="59,36 54,34 52,39" fill="none" stroke="url(#iconGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <!-- Up arrowhead -->
+  <polyline points="33,41 38,35 43,41" fill="none" stroke="url(#iconGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- SplitFool text -->
+  <text
+    x="76"
+    y="63"
+    font-family="'Outfit', 'Arial Black', 'Helvetica Neue', sans-serif"
+    font-size="42"
+    font-weight="800"
+    fill="url(#textGrad)"
+    letter-spacing="-1">SplitFool</text>
+</svg>
