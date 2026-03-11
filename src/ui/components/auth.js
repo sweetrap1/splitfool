@@ -3,41 +3,19 @@
 import { loginWithPopup, loginWithRedirect, logout } from '../../api/auth.js';
 import { showAlert } from '../../utils/dialogs.js';
 
-// Detect iOS / Safari — these browsers block popups from Firebase
-function isIOSOrSafari() {
-    const ua = navigator.userAgent || '';
-    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-    return isIOS || isSafari;
-}
-
 export function initAuthUI(onAuthChange, renderAll) {
     const loginHandler = async () => {
         showAuthStatus('Initializing Google Login...', '');
         const googleBtn = document.getElementById('google-login-btn');
         if (googleBtn) googleBtn.disabled = true;
 
-        // On iOS/Safari, skip the popup entirely — it is always blocked.
-        // Go straight to redirect so the flow actually completes.
-        if (isIOSOrSafari()) {
-            showAuthStatus('Redirecting to Google...', '');
-            loginWithRedirect().catch(err => {
-                handleAuthError(err);
-                showAuthStatus('Login failed: ' + err.message, 'error');
-                if (googleBtn) googleBtn.disabled = false;
-            });
-            return;
-        }
-
         try {
             await loginWithPopup();
         } catch (error) {
-            // auth/popup-blocked, auth/cancelled-popup-request, auth/popup-closed-by-user
-            // all indicate the popup was suppressed — fall back to redirect.
+            // If the popup was blocked, fall back to full-page redirect.
             if (
                 error.code === 'auth/popup-blocked' ||
-                error.code === 'auth/cancelled-popup-request' ||
-                error.code === 'auth/popup-closed-by-user'
+                error.code === 'auth/cancelled-popup-request'
             ) {
                 showAuthStatus('Popup blocked. Redirecting...', '');
                 loginWithRedirect().catch(err => {
@@ -45,6 +23,10 @@ export function initAuthUI(onAuthChange, renderAll) {
                     showAuthStatus('Login failed: ' + err.message, 'error');
                     if (googleBtn) googleBtn.disabled = false;
                 });
+            } else if (error.code === 'auth/popup-closed-by-user') {
+                // User intentionally closed the popup — just re-enable the button.
+                showAuthStatus('', '');
+                if (googleBtn) googleBtn.disabled = false;
             } else {
                 handleAuthError(error);
                 showAuthStatus('Login error: ' + error.message, 'error');
@@ -56,9 +38,6 @@ export function initAuthUI(onAuthChange, renderAll) {
     document.getElementById('login-btn')?.addEventListener('click', loginHandler);
     document.getElementById('google-login-btn')?.addEventListener('click', loginHandler);
 
-    // The unauthenticated "join with code" flow on the login screen has been
-    // removed. Firestore rules require authentication before any read/write.
-    // Users must sign in with Google first, then join via the in-app Join button.
     document.getElementById('logout-btn')?.addEventListener('click', () => {
         logout();
     });
