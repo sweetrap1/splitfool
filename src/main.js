@@ -10,7 +10,7 @@ import { initNavigation, renderGroupSelector, initModals } from './ui/navigation
 import { initAuthUI, showAuthStatus } from './ui/components/auth.js';
 import { initGroupsUI } from './ui/components/groups.js';
 import { initPeopleUI, renderPeople } from './ui/components/people.js';
-import { initExpensesUI, renderExpenses } from './ui/components/expenses.js';
+import { initExpensesUI, renderExpenses } from './ui/components/expenses.js?v=2';
 import { initSettleUpUI, renderBalances, renderSettleUp } from './ui/components/settleUp.js';
 import { populateAllCurrencyDropdowns } from './ui/currencyUI.js';
 

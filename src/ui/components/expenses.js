@@ -21,6 +21,7 @@ export function initExpensesUI(renderAll) {
     window.toggleParticipant = toggleParticipant;
     window.togglePayerMode = togglePayerMode;
     window.updateMultiplePayersSummary = updateMultiplePayersSummary;
+    window.updateSplitSummary = updateSplitSummary;
 
     if (addExpenseBtn && expenseModal) {
         addExpenseBtn.addEventListener('click', () => {
