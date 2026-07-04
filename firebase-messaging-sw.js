@@ -14,13 +14,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
+// We do not need to manually call self.registration.showNotification here
+// because the backend sends a "notification" payload, which the browser
+// automatically displays on its own when the app is in the background.
+// Doing it here manually was causing duplicate notifications!
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/store_icon.png'
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
 });
