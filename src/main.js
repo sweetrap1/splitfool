@@ -99,6 +99,12 @@ async function initApp() {
             // Handle Notification Permissions
             const notifBtn = document.getElementById('enable-notifs-btn');
             if (messaging) {
+                // Handle foreground messages
+                messaging.onMessage((payload) => {
+                    console.log('Foreground message received:', payload);
+                    alert(`${payload.notification.title}\n\n${payload.notification.body}`);
+                });
+
                 if (Notification.permission === 'default') {
                     if (notifBtn) notifBtn.style.display = 'inline-flex';
                 } else if (Notification.permission === 'granted') {

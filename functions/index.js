@@ -44,8 +44,9 @@ exports.onexpenseadded = onDocumentUpdated("groups/{groupId}", async (event) => 
         const tokens = [];
 
         for (const person of peopleToNotify) {
+            if (!person.userId) continue; // Skip dummy members who don't have a linked account
             try {
-                const userDoc = await db.collection("users").doc(person.id).get();
+                const userDoc = await db.collection("users").doc(person.userId).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
                     if (userData.fcmToken) {
@@ -53,7 +54,7 @@ exports.onexpenseadded = onDocumentUpdated("groups/{groupId}", async (event) => 
                     }
                 }
             } catch (err) {
-                console.error(`Error fetching user ${person.id}:`, err);
+                console.error(`Error fetching user ${person.userId}:`, err);
             }
         }
 
@@ -133,12 +134,23 @@ exports.monthlyreminder = onSchedule("0 0 1 * *", async (event) => {
             });
         });
 
+        // Create a map of personId -> userId
+        const personIdToUserId = {};
+        group.people.forEach(p => {
+            if (p.userId) {
+                personIdToUserId[p.id] = p.userId;
+            }
+        });
+
         // Determine if anyone has a net negative balance in any currency
         for (const [personId, personBals] of Object.entries(balances)) {
             for (const [cur, netAmt] of Object.entries(personBals)) {
                 // If net amount is negative, this person owes money
                 if (netAmt <= -0.01) {
-                    usersOweMoney.add(personId);
+                    const uid = personIdToUserId[personId];
+                    if (uid) {
+                        usersOweMoney.add(uid);
+                    }
                     break;
                 }
             }
