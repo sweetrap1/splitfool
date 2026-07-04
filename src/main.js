@@ -26,6 +26,20 @@ function renderAll() {
 // Bind state changes to re-render
 registerRenderCallback(renderAll);
 
+async function getServiceWorkerRegistration() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+            await navigator.serviceWorker.ready;
+            return registration;
+        } catch (e) {
+            console.error("Service worker registration failed:", e);
+        }
+    }
+    return null;
+}
+
+
 async function initApp() {
     // Process URL Invite Links (?join=CODE) immediately before Auth
     const urlParams = new URLSearchParams(window.location.search);
@@ -89,7 +103,12 @@ async function initApp() {
                     if (notifBtn) notifBtn.style.display = 'inline-flex';
                 } else if (Notification.permission === 'granted') {
                     // Ensure token is synced on login
-                    messaging.getToken({ vapidKey: 'BIW9jCB-g68mv8zHDnbnEqyh888cT5rvjqyrk8rL5alw4bukdcKKfQmru4zs1SQt-dGapY2PIRKieu6S9QvaSSY' }).then(token => {
+                    getServiceWorkerRegistration().then(reg => {
+                        return messaging.getToken({
+                            vapidKey: 'BIW9jCB-g68mv8zHDnbnEqyh888cT5rvjqyrk8rL5alw4bukdcKKfQmru4zs1SQt-dGapY2PIRKieu6S9QvaSSY',
+                            serviceWorkerRegistration: reg
+                        });
+                    }).then(token => {
                         if (token) {
                             db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
                         }
@@ -103,8 +122,12 @@ async function initApp() {
                         const permission = await Notification.requestPermission();
                         if (permission === 'granted') {
                             notifBtn.style.display = 'none';
-                            try {
-                                const token = await messaging.getToken({ vapidKey: 'BIW9jCB-g68mv8zHDnbnEqyh888cT5rvjqyrk8rL5alw4bukdcKKfQmru4zs1SQt-dGapY2PIRKieu6S9QvaSSY' });
+                             try {
+                                const reg = await getServiceWorkerRegistration();
+                                const token = await messaging.getToken({
+                                    vapidKey: 'BIW9jCB-g68mv8zHDnbnEqyh888cT5rvjqyrk8rL5alw4bukdcKKfQmru4zs1SQt-dGapY2PIRKieu6S9QvaSSY',
+                                    serviceWorkerRegistration: reg
+                                });
                                 if (token) {
                                     await db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
                                     alert("Notifications enabled!");
