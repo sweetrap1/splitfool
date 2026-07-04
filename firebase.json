@@ -7,7 +7,16 @@
     "public": "./",
     "ignore": [
       "firebase.json",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/.*",
+      "android.keystore",
+      "app/**",
+      "build/**",
+      "functions/**",
+      "firestore.rules",
+      "firestore.indexes.json",
+      "*.md",
+      "package*.json"
     ],
     "rewrites": [
       {

@@ -67,3 +67,12 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Android Build Artifacts
+build/
+app/build/
+.gradle/
+local.properties
+*.apk
+*.aab
+*.mdmp
