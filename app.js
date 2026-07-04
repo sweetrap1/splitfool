@@ -12,6 +12,33 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 const db = firebase.firestore();
+let messaging = null;
+try {
+    messaging = firebase.messaging();
+} catch (e) {
+    console.warn("Firebase messaging not supported or configured:", e);
+}
+
+async function requestNotificationPermission(user) {
+    if (!messaging) return;
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            console.log('Notification permission granted.');
+            // Note: you may need to add vapidKey: 'YOUR_VAPID_KEY' to getToken in a production environment
+            const token = await messaging.getToken();
+            if (token) {
+                await db.collection('users').doc(user.uid).set({
+                    fcmToken: token,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                console.log("FCM Token saved for user.");
+            }
+        }
+    } catch (err) {
+        console.error('An error occurred while retrieving token.', err);
+    }
+}
 
 // State Management
 let savedGroupIds = JSON.parse(localStorage.getItem('splitfool_saved_groups') || '[]');
@@ -106,6 +133,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Check for pending invite
             handlePendingInvite(user);
+
+            // Request Notification Permission
+            requestNotificationPermission(user);
         } else {
             console.log("Auth state change: No user");
             syncUserGroups(null); // Stop listener
