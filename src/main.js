@@ -26,7 +26,7 @@ function renderAll() {
 // Bind state changes to re-render
 registerRenderCallback(renderAll);
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initApp() {
     // Process URL Invite Links (?join=CODE) immediately before Auth
     const urlParams = new URLSearchParams(window.location.search);
     const joinCode = urlParams.get('join')?.toUpperCase();
@@ -103,13 +103,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const permission = await Notification.requestPermission();
                         if (permission === 'granted') {
                             notifBtn.style.display = 'none';
-                            const token = await messaging.getToken();
-                            if (token) {
-                                await db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
-                                alert("Notifications enabled!");
+                            try {
+                                const token = await messaging.getToken();
+                                if (token) {
+                                    await db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
+                                    alert("Notifications enabled!");
+                                } else {
+                                    alert("Permission granted but no token received.");
+                                }
+                            } catch (tokenErr) {
+                                alert("Token Error: " + tokenErr.message);
+                                console.error("Token Error:", tokenErr);
                             }
+                        } else {
+                            alert("Permission not granted: " + permission + "\nIf you are on a phone, make sure the app is installed and you haven't previously blocked notifications.");
                         }
                     } catch(err) {
+                        alert("Notif Error: " + err.message);
                         console.error("Notif Error", err);
                     }
                 };
@@ -206,7 +216,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (installBtn) installBtn.addEventListener('click', handleInstallPrompt);
     if (installLoginBtn) installLoginBtn.addEventListener('click', handleInstallPrompt);
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
 
 async function initFirebaseDataFallback() {
     // Basic initialization of known groups if any
