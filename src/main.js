@@ -89,7 +89,7 @@ async function initApp() {
                     if (notifBtn) notifBtn.style.display = 'inline-flex';
                 } else if (Notification.permission === 'granted') {
                     // Ensure token is synced on login
-                    messaging.getToken().then(token => {
+                    messaging.getToken({ vapidKey: 'BIW9jCB-g68mv8zHDnbnEqyh888cT5rvjqyrk8rL5alw4bukdcKKfQmru4zs1SQt-dGapY2PIRKieu6S9QvaSSY' }).then(token => {
                         if (token) {
                             db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
                         }
@@ -104,7 +104,7 @@ async function initApp() {
                         if (permission === 'granted') {
                             notifBtn.style.display = 'none';
                             try {
-                                const token = await messaging.getToken();
+                                const token = await messaging.getToken({ vapidKey: 'BIW9jCB-g68mv8zHDnbnEqyh888cT5rvjqyrk8rL5alw4bukdcKKfQmru4zs1SQt-dGapY2PIRKieu6S9QvaSSY' });
                                 if (token) {
                                     await db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
                                     alert("Notifications enabled!");
