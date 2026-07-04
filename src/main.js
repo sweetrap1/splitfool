@@ -1,6 +1,6 @@
 // main.js - Entry Point
 
-import { auth, db } from './firebase-init.js';
+import { auth, db, messaging } from './firebase-init.js';
 import { state, setCurrentUser, savedGroupIds, setActiveGroup } from './state.js';
 import { syncUserGroups, registerRenderCallback, subscribeToGroup } from './api/groups.js';
 import { fetchExchangeRate } from './utils/currency.js';
@@ -82,6 +82,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 processPendingInvite(user, renderAll);
             }).catch(e => console.error("Invite processing error:", e));
             
+            // Handle Notification Permissions
+            const notifBtn = document.getElementById('enable-notifs-btn');
+            if (messaging) {
+                if (Notification.permission === 'default') {
+                    if (notifBtn) notifBtn.style.display = 'inline-flex';
+                } else if (Notification.permission === 'granted') {
+                    // Ensure token is synced on login
+                    messaging.getToken().then(token => {
+                        if (token) {
+                            db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
+                        }
+                    }).catch(e => console.warn("Failed to get FCM token", e));
+                }
+            }
+
+            if (notifBtn) {
+                notifBtn.onclick = async () => {
+                    try {
+                        const permission = await Notification.requestPermission();
+                        if (permission === 'granted') {
+                            notifBtn.style.display = 'none';
+                            const token = await messaging.getToken();
+                            if (token) {
+                                await db.collection('users').doc(user.uid).set({ fcmToken: token }, { merge: true });
+                                alert("Notifications enabled!");
+                            }
+                        }
+                    } catch(err) {
+                        console.error("Notif Error", err);
+                    }
+                };
+            }
+
             // Extra safety render to catch immediate syncs
             setTimeout(renderAll, 1000);
         } else {

@@ -23,6 +23,12 @@ if (!window.firebase.apps.length) {
 export const auth = window.firebase.auth();
 export const provider = new window.firebase.auth.GoogleAuthProvider();
 export const db = window.firebase.firestore();
+export let messaging = null;
+try {
+    messaging = window.firebase.messaging();
+} catch (e) {
+    console.warn("Firebase messaging not supported:", e);
+}
 
 // Set auth persistence once at init time (not per-login call).
 // LOCAL persistence uses IndexedDB which survives page reloads.
