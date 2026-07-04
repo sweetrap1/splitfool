@@ -39,6 +39,44 @@ async function getServiceWorkerRegistration() {
     return null;
 }
 
+function showToast(title, body) {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'custom-toast';
+    
+    toast.innerHTML = `
+        <div class="toast-icon">🔔</div>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-body">${body}</div>
+        </div>
+        <button class="toast-close-btn">&times;</button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Close button click
+    toast.querySelector('.toast-close-btn').onclick = () => {
+        toast.classList.add('toast-fade-out');
+        setTimeout(() => toast.remove(), 400);
+    };
+    
+    // Auto-remove after 6 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.classList.add('toast-fade-out');
+            setTimeout(() => toast.remove(), 400);
+        }
+    }, 6000);
+}
+
+
 
 async function initApp() {
     // Process URL Invite Links (?join=CODE) immediately before Auth
@@ -102,7 +140,7 @@ async function initApp() {
                 // Handle foreground messages
                 messaging.onMessage((payload) => {
                     console.log('Foreground message received:', payload);
-                    alert(`${payload.notification.title}\n\n${payload.notification.body}`);
+                    showToast(payload.notification.title, payload.notification.body);
                 });
 
                 if (Notification.permission === 'default') {
