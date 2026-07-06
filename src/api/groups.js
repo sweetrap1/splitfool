@@ -191,31 +191,50 @@ export async function addMemberToGroup(groupId, uid) {
 export async function leaveGroup(groupId, uid) {
     if (!groupId || !uid) return;
 
-    // Use a transaction to safely remove the user from people/memberIds
-    await db.runTransaction(async (transaction) => {
-        const ref = db.collection('groups').doc(groupId);
-        const doc = await transaction.get(ref);
-        if (!doc.exists) return;
+    try {
+        // Use a transaction to safely remove the user from people/memberIds
+        await db.runTransaction(async (transaction) => {
+            const ref = db.collection('groups').doc(groupId);
+            const doc = await transaction.get(ref);
+            if (!doc.exists) return;
 
-        const data = doc.data();
+            const data = doc.data();
 
-        // Find the person record before removing, so we can preserve their
-        // name in formerMembers for expense-history display
-        const leavingPerson = (data.people || []).find(p => p.userId === uid);
-        const formerMembers = data.formerMembers || [];
-        if (leavingPerson && !formerMembers.some(fm => fm.id === leavingPerson.id)) {
-            formerMembers.push({ id: leavingPerson.id, name: leavingPerson.name });
-        }
+            // Find the person record before removing, so we can preserve their
+            // name in formerMembers for expense-history display
+            const leavingPerson = (data.people || []).find(p => p.userId === uid);
+            
+            // If they are not even in the group on the server, we don't need to update Firestore!
+            // This prevents permission errors if a user is just "watching" a group they never fully joined.
+            if (!leavingPerson && !(data.memberIds || []).includes(uid)) {
+                return; // Nothing to update on the server, just remove locally
+            }
 
-        const updatedPeople = (data.people || []).filter(p => p.userId !== uid);
-        const updatedMemberIds = (data.memberIds || []).filter(id => id !== uid);
+            const formerMembers = data.formerMembers || [];
+            if (leavingPerson && !formerMembers.some(fm => fm.id === leavingPerson.id)) {
+                formerMembers.push({ id: leavingPerson.id, name: leavingPerson.name });
+            }
 
-        transaction.update(ref, {
-            people: updatedPeople,
-            memberIds: updatedMemberIds,
-            formerMembers
+            const updatedPeople = (data.people || []).filter(p => p.userId !== uid);
+            
+            // Properly migrate memberIds if it's missing on old groups
+            let currentMemberIds = data.memberIds;
+            if (!currentMemberIds) {
+                currentMemberIds = (data.people || []).filter(p => p.userId).map(p => p.userId);
+            }
+            const updatedMemberIds = currentMemberIds.filter(id => id !== uid);
+
+            transaction.update(ref, {
+                people: updatedPeople,
+                memberIds: updatedMemberIds,
+                formerMembers
+            });
         });
-    });
+    } catch (e) {
+        console.error("Failed to update group on server when leaving:", e);
+        // We still want to remove it locally even if the server update fails 
+        // (e.g. permission denied because they weren't a recognized member anyway)
+    }
 
     // Remove from local known list
     const index = savedGroupIds.indexOf(groupId);
