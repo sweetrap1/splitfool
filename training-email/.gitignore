@@ -1,0 +1,7 @@
+# Local secrets and data — never commit these
+config.json
+recipients.txt
+state.json
+output/
+__pycache__/
+*.pyc

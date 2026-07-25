@@ -1,0 +1,5 @@
+# One email address per line. Lines starting with # are ignored.
+# Copy this file to recipients.txt and add your real staff addresses.
+# Recipients are BCC'd, so no one sees the full list.
+jane.driver@example.com
+john.operator@example.com

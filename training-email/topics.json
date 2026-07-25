@@ -1,0 +1,229 @@
+{
+  "_comment": "Weekly training topics sourced from FMCSA (fmcsa.dot.gov). Add, remove, or reorder topics freely. 'key_points' become the slide outline. Always verify 'source_url' before sending, since FMCSA occasionally moves pages.",
+  "topics": [
+    {
+      "id": "hours-of-service",
+      "title": "Hours of Service (HOS)",
+      "summary": "The federal limits on how long a commercial driver may be on duty and drive before rest is required, designed to prevent fatigued driving.",
+      "source_url": "https://www.fmcsa.dot.gov/regulations/hours-of-service",
+      "key_points": [
+        "11-hour driving limit after 10 consecutive hours off duty",
+        "14-hour on-duty window that cannot be extended by breaks",
+        "Required 30-minute break after 8 cumulative hours of driving",
+        "60/70-hour limit over 7/8 consecutive days",
+        "Short-haul and adverse driving condition exceptions",
+        "Sleeper berth provision and split-sleeper options"
+      ]
+    },
+    {
+      "id": "eld",
+      "title": "Electronic Logging Devices (ELDs)",
+      "summary": "ELDs automatically record driving time to help ensure Hours of Service compliance and reduce paperwork errors.",
+      "source_url": "https://www.fmcsa.dot.gov/hours-service/elds/electronic-logging-devices",
+      "key_points": [
+        "Who is required to use an ELD and who is exempt",
+        "How an ELD connects to the engine to record driving time",
+        "Reviewing and certifying your daily logs",
+        "Handling malfunctions and the 8-day paper-log rule",
+        "Transferring data to an officer during a roadside inspection",
+        "Keeping supporting documents on file"
+      ]
+    },
+    {
+      "id": "dvir-inspections",
+      "title": "Vehicle Inspections & DVIR",
+      "summary": "Pre-trip, en-route, and post-trip inspections plus the Driver Vehicle Inspection Report keep unsafe vehicles off the road.",
+      "source_url": "https://www.fmcsa.dot.gov/regulations/title/49/section/396.11",
+      "key_points": [
+        "Pre-trip inspection: what to check before every trip",
+        "Brakes, tires, lights, and coupling devices",
+        "En-route checks and post-trip inspection duties",
+        "Completing an accurate Driver Vehicle Inspection Report (DVIR)",
+        "Reporting and correcting defects before the next trip",
+        "Recordkeeping and driver signatures"
+      ]
+    },
+    {
+      "id": "cdl",
+      "title": "Commercial Driver's License (CDL)",
+      "summary": "CDL classes, endorsements, and restrictions that define what a driver is legally qualified to operate.",
+      "source_url": "https://www.fmcsa.dot.gov/registration/commercial-drivers-license",
+      "key_points": [
+        "CDL Classes A, B, and C explained",
+        "Endorsements: HazMat (H), Tanker (N), Passenger (P), School Bus (S), Doubles/Triples (T)",
+        "Common restrictions and what they mean",
+        "Keeping your CDL and medical certificate current",
+        "Consequences of driving outside your class or endorsement",
+        "State-specific renewal requirements"
+      ]
+    },
+    {
+      "id": "clearinghouse",
+      "title": "Drug & Alcohol Clearinghouse",
+      "summary": "The FMCSA online database of CDL driver drug and alcohol program violations that employers must query.",
+      "source_url": "https://clearinghouse.fmcsa.dot.gov/",
+      "key_points": [
+        "What the Clearinghouse is and why it exists",
+        "Pre-employment and annual query requirements",
+        "How violations are reported and by whom",
+        "The return-to-duty (RTD) process",
+        "Driver consent and viewing your own record",
+        "Employer responsibilities and deadlines"
+      ]
+    },
+    {
+      "id": "drug-alcohol-testing",
+      "title": "Drug & Alcohol Testing Program",
+      "summary": "The DOT-required testing program covering pre-employment, random, post-accident, and reasonable-suspicion testing.",
+      "source_url": "https://www.fmcsa.dot.gov/regulations/drug-alcohol-testing-program",
+      "key_points": [
+        "The six DOT testing scenarios",
+        "Substances tested for under the DOT panel",
+        "Random testing rates and selection",
+        "Post-accident testing thresholds and timing",
+        "Reasonable-suspicion training for supervisors",
+        "Consequences of a refusal or positive result"
+      ]
+    },
+    {
+      "id": "cargo-securement",
+      "title": "Cargo Securement",
+      "summary": "Rules for tie-downs, working load limits, and load distribution that keep freight from shifting or falling.",
+      "source_url": "https://www.fmcsa.dot.gov/regulations/cargo-securement/cargo-securement-rules",
+      "key_points": [
+        "Working Load Limit (WLL) and the aggregate rule",
+        "Minimum number of tie-downs by cargo length and weight",
+        "Securing specific commodities (logs, vehicles, pipe, etc.)",
+        "Blocking, bracing, and friction mats",
+        "Inspecting tie-downs during the trip",
+        "Preventing load shift and rollover"
+      ]
+    },
+    {
+      "id": "hazmat",
+      "title": "Hazardous Materials Transport",
+      "summary": "Requirements for placarding, shipping papers, and handling when transporting hazardous materials.",
+      "source_url": "https://www.fmcsa.dot.gov/regulations/hazardous-materials",
+      "key_points": [
+        "The nine hazard classes",
+        "Placarding requirements and thresholds",
+        "Shipping papers and emergency response information",
+        "HazMat endorsement and security awareness training",
+        "Segregation and loading/unloading rules",
+        "What to do in a release or incident"
+      ]
+    },
+    {
+      "id": "distracted-driving",
+      "title": "Distracted Driving",
+      "summary": "Federal restrictions on hand-held phone use and texting, and the broader risks of taking your attention off the road.",
+      "source_url": "https://www.fmcsa.dot.gov/driver-safety/distracted-driving",
+      "key_points": [
+        "Federal ban on texting while driving a CMV",
+        "Hand-held mobile phone restrictions",
+        "Penalties for drivers and carriers",
+        "The three types of distraction: visual, manual, cognitive",
+        "Stopping-distance math at highway speed",
+        "Building distraction-free driving habits"
+      ]
+    },
+    {
+      "id": "fatigue-management",
+      "title": "Driver Fatigue Management",
+      "summary": "Recognizing and preventing fatigue, one of the leading contributing factors in commercial vehicle crashes.",
+      "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/driver-fatigue",
+      "key_points": [
+        "Warning signs of fatigue behind the wheel",
+        "Sleep debt and circadian rhythm effects",
+        "Sleep apnea awareness and screening",
+        "Effective use of rest breaks",
+        "Diet, hydration, and caffeine strategies",
+        "When to stop and rest instead of pushing on"
+      ]
+    },
+    {
+      "id": "csa",
+      "title": "CSA & Roadside Inspections",
+      "summary": "How the Compliance, Safety, Accountability program and roadside inspection scores affect drivers and carriers.",
+      "source_url": "https://www.fmcsa.dot.gov/safety/csa/compliance-safety-accountability",
+      "key_points": [
+        "The seven BASIC safety categories",
+        "How roadside inspection results feed CSA scores",
+        "Severity weighting and time weighting of violations",
+        "The North American Standard inspection levels",
+        "How drivers can protect their record",
+        "Reviewing and disputing data through DataQs"
+      ]
+    },
+    {
+      "id": "medical-qualification",
+      "title": "Driver Medical Qualifications",
+      "summary": "DOT physical requirements and the medical certificate that keep drivers physically fit for duty.",
+      "source_url": "https://www.fmcsa.dot.gov/medical/driver-medical-requirements/medical-requirements",
+      "key_points": [
+        "The DOT physical and the National Registry of Certified Medical Examiners",
+        "Common disqualifying conditions",
+        "Medical certificate validity periods",
+        "Vision, hearing, and blood pressure standards",
+        "Reporting changes in health status",
+        "Keeping your medical card current with your CDL"
+      ]
+    },
+    {
+      "id": "eldt",
+      "title": "Entry-Level Driver Training (ELDT)",
+      "summary": "The federal minimum training standards for new CDL applicants and certain upgrades and endorsements.",
+      "source_url": "https://www.fmcsa.dot.gov/registration/entry-level-driver-training-eldt",
+      "key_points": [
+        "Who must complete ELDT before testing",
+        "Theory and behind-the-wheel curriculum requirements",
+        "Using the Training Provider Registry (TPR)",
+        "How training completion is reported to FMCSA",
+        "Applies to Class A/B upgrades and P, S, H endorsements",
+        "Choosing a registered training provider"
+      ]
+    },
+    {
+      "id": "adverse-conditions",
+      "title": "Adverse Driving Conditions",
+      "summary": "Adjusting speed and following distance and knowing when to stop in rain, snow, ice, fog, and high wind.",
+      "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/cmv-driving-tips-driving-adverse-conditions",
+      "key_points": [
+        "Reducing speed for wet, snowy, and icy roads",
+        "Increasing following distance in poor traction",
+        "Managing hydroplaning and skids",
+        "Driving safely in fog and reduced visibility",
+        "High-wind precautions for high-profile vehicles",
+        "When conditions require you to stop and wait"
+      ]
+    },
+    {
+      "id": "work-zone-safety",
+      "title": "Work Zone Safety",
+      "summary": "Driving safely through construction and maintenance zones to protect workers and other motorists.",
+      "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/cmv-driving-tips-too-fast-conditions",
+      "key_points": [
+        "Slowing down and obeying posted work-zone limits",
+        "Increasing following distance approaching a zone",
+        "Watching for workers, flaggers, and equipment",
+        "Managing merges and lane shifts safely",
+        "Avoiding distractions where they matter most",
+        "Expecting sudden stops and queue backups"
+      ]
+    },
+    {
+      "id": "speed-space-management",
+      "title": "Speed & Space Management",
+      "summary": "Controlling speed and maintaining a safe cushion of space in all directions around the vehicle.",
+      "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/cmv-driving-tips-following-too-closely",
+      "key_points": [
+        "Following distance rules for large vehicles",
+        "Stopping distance = perception + reaction + braking",
+        "Managing space to the sides and overhead",
+        "Speed and stopping distance on grades",
+        "Speed management in curves and ramps",
+        "Adjusting for weight, road, and weather"
+      ]
+    }
+  ]
+}
