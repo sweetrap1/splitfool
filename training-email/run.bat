@@ -7,7 +7,11 @@ REM ============================================================
 
 cd /d "%~dp0"
 
-REM --- Preview only (default): writes email + slides to the output folder ---
+REM --- First run only: install the PowerPoint library. Safe to leave in;
+REM     pip skips it if it's already installed. ---
+python -m pip install -r requirements.txt
+
+REM --- Preview only (default): writes email + .pptx slides to output folder ---
 python main.py
 
 REM --- To ACTUALLY send to your staff list, put your Gmail App Password

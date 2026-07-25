@@ -4,8 +4,8 @@
 
 WHAT THIS DOES
   Every week it picks a new FMCSA safety topic, writes the email, and
-  builds a slide outline. It can also email your staff list via Gmail.
-  It cycles through all 16 topics before any repeat.
+  builds a ready-to-present PowerPoint deck. It can also email your staff
+  list via Gmail. It cycles through all 16 topics before any repeat.
 
 ------------------------------------------------------------------------
 ONE-TIME SETUP
@@ -20,7 +20,13 @@ ONE-TIME SETUP
    - Download this "training-email" folder to somewhere easy, like your
      Desktop or Documents.
 
-3. (Only if you want to SEND emails) SET UP GMAIL
+3. INSTALL THE POWERPOINT LIBRARY (one time)
+   - Open a terminal / Command Prompt in this folder and type:
+        pip install -r requirements.txt
+   - (This installs "python-pptx", which builds the .pptx slides.
+     If you skip it, you still get the email + a text outline.)
+
+4. (Only if you want to SEND emails) SET UP GMAIL
    - Make a copy of "config.example.json" named  config.json
        Open it and fill in your Gmail address and sender name.
    - Make a copy of "recipients.example.txt" named  recipients.txt
@@ -38,7 +44,7 @@ RUNNING IT EACH WEEK
      Windows: double-click  run.bat
      Mac:     ./run.sh
      ...or type:  python main.py
-     -> Look in the "output" folder for the email + slide outline.
+     -> Look in the "output" folder for the email + the .pptx slides.
 
   ACTUALLY SEND to your staff:
      Open run.bat in Notepad and follow the notes at the bottom to add

@@ -1,9 +1,9 @@
 # Weekly FMCSA Training Email Automation
 
 Picks a new commercial-vehicle safety training topic every week (sourced from
-[fmcsa.dot.gov](https://www.fmcsa.dot.gov/)), writes a ready-to-send email and a
-slide-by-slide outline you can drop into PowerPoint or Google Slides, and can
-email the whole thing to your staff list through Gmail.
+[fmcsa.dot.gov](https://www.fmcsa.dot.gov/)), writes a ready-to-send email,
+builds a real **PowerPoint (.pptx)** deck plus a text outline, and can email the
+whole thing to your staff list through Gmail.
 
 Nothing is emailed unless you explicitly pass `--send`.
 
@@ -11,18 +11,28 @@ Nothing is emailed unless you explicitly pass `--send`.
 
 ## Quick start
 
-No installation needed — it uses only the Python standard library (Python 3.8+).
+The core tool uses only the Python standard library (Python 3.8+). To generate
+the PowerPoint deck, install one package:
+
+```bash
+pip install python-pptx
+```
+
+Then:
 
 ```bash
 cd training-email
 python main.py
 ```
 
-That picks this week's topic, prints a preview, and saves two files in
-`output/`:
+That picks this week's topic, prints a preview, and saves to `output/`:
 
 - `<date>_<topic>_email.txt` — the email subject and body
-- `<date>_<topic>_slides.txt` — the slide outline
+- `<date>_<topic>_slides.pptx` — the ready-to-present PowerPoint deck
+- `<date>_<topic>_slides.txt` — a plain-text outline (backup / for Google Slides)
+
+If `python-pptx` isn't installed, the `.pptx` is skipped and the text outline is
+produced instead — everything else still works.
 
 Run it again next week and it automatically moves to a new topic. It cycles
 through the entire topic list before anything repeats.
@@ -47,11 +57,16 @@ python main.py --date 2026-08-03
 
 ---
 
-## Turning the outline into slides
+## The slides
 
-The `_slides.txt` file has one entry per slide (title + bullets). To build the
-deck, paste it into PowerPoint's **Outline View** or Google Slides, or ask me to
-generate an actual `.pptx` from it — that's a natural next step.
+Each week you get a finished `_slides.pptx` deck you can open and present
+directly in PowerPoint — a dark title slide, an overview with the CFR citation,
+an agenda, one slide per key point filled with the actual FMCSA facts, and a
+closing slide with the reference link. Edit anything you like before presenting.
+
+The `_slides.txt` outline is a plain-text backup (handy for pasting into Google
+Slides via its outline import). To change the deck's colors, fonts, or layout,
+edit `slides.py`.
 
 ---
 
@@ -92,9 +107,9 @@ file private — it's git-ignored for that reason.)
 python main.py --send
 ```
 
-Recipients are placed in **BCC**, so no one sees the full staff list. The slide
-outline is attached automatically. Once you've built a real `.pptx` deck, you
-can attach that instead (ask me and I'll wire it in).
+Recipients are placed in **BCC**, so no one sees the full staff list. The
+PowerPoint deck is attached automatically (or the text outline if python-pptx
+isn't installed).
 
 ---
 
@@ -118,11 +133,13 @@ On Windows, use Task Scheduler to run `python main.py --send` weekly.
 | `topics.json` | The training topic catalog (edit this) |
 | `selector.py` | Weekly topic selection + rotation history |
 | `content.py` | Builds the email body and slide outline |
+| `slides.py` | Generates the PowerPoint (.pptx) deck (needs python-pptx) |
 | `sender.py` | Gmail SMTP sending |
+| `requirements.txt` | Optional dependency (python-pptx) for the .pptx deck |
 | `config.example.json` | Template for your settings |
 | `recipients.example.txt` | Template for your staff list |
 | `state.json` | Rotation history (auto-created, git-ignored) |
-| `output/` | Generated emails + outlines (git-ignored) |
+| `output/` | Generated emails, decks + outlines (git-ignored) |
 
 ---
 

@@ -22,6 +22,11 @@ import content
 import selector
 import sender
 
+try:
+    import slides as slidegen  # PowerPoint generation (needs python-pptx)
+except ImportError:
+    slidegen = None
+
 HERE = os.path.dirname(__file__)
 CONFIG_FILE = os.path.join(HERE, "config.json")
 OUTPUT_DIR = os.path.join(HERE, "output")
@@ -39,7 +44,11 @@ def parse_date(s):
 
 
 def write_outputs(topic, week_key, subject, body, outline_text, for_date):
-    """Save the email and outline to the output/ folder; return file paths."""
+    """Save the email, text outline, and PowerPoint to output/.
+
+    Returns (email_path, outline_path, pptx_path). pptx_path is None if
+    python-pptx isn't installed (the text outline is still produced).
+    """
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     stamp = for_date.strftime("%Y-%m-%d")
     base = f"{stamp}_{topic['id']}"
@@ -52,7 +61,12 @@ def write_outputs(topic, week_key, subject, body, outline_text, for_date):
     with open(outline_path, "w", encoding="utf-8") as f:
         f.write(outline_text)
 
-    return email_path, outline_path
+    pptx_path = None
+    if slidegen is not None:
+        pptx_path = os.path.join(OUTPUT_DIR, f"{base}_slides.pptx")
+        slidegen.build_pptx(topic, pptx_path, for_date=for_date)
+
+    return email_path, outline_path, pptx_path
 
 
 def main():
@@ -77,11 +91,12 @@ def main():
     # 2. Build the email + slide outline.
     sender_name = config.get("sender_name", "Your Safety Training Team")
     subject, body = content.build_email(topic, sender_name=sender_name, for_date=for_date)
-    slides = content.build_slide_outline(topic, for_date=for_date)
-    outline_text = content.render_outline_text(topic, slides)
+    outline_slides = content.build_slide_outline(topic, for_date=for_date)
+    outline_text = content.render_outline_text(topic, outline_slides)
 
-    # 3. Save output files.
-    email_path, outline_path = write_outputs(topic, week_key, subject, body, outline_text, for_date)
+    # 3. Save output files (email, text outline, and PowerPoint).
+    email_path, outline_path, pptx_path = write_outputs(
+        topic, week_key, subject, body, outline_text, for_date)
 
     # 4. Print a preview.
     print("=" * 64)
@@ -92,9 +107,13 @@ def main():
     print(f"Subject: {subject}\n")
     print(body)
     print("-" * 64)
-    print(f"Email saved to:   {email_path}")
-    print(f"Outline saved to: {outline_path}")
-    print(f"Slides in outline: {len(slides)}")
+    print(f"Email saved to:    {email_path}")
+    print(f"Outline saved to:  {outline_path}")
+    if pptx_path:
+        print(f"PowerPoint saved:  {pptx_path}")
+    else:
+        print("PowerPoint:        (skipped — run 'pip install python-pptx' to enable)")
+    print(f"Slides in outline: {len(outline_slides)}")
     print("-" * 64)
 
     # 5. Record the pick so the rotation advances (unless suppressed).
@@ -122,18 +141,20 @@ def main():
             return
 
         recipients = sender.load_recipients(recipients_file)
-        # The slide outline is attached as a text file. Swap this for your
-        # .pptx once you've built the deck from the outline.
+        # Attach the PowerPoint deck; fall back to the text outline if
+        # python-pptx isn't installed.
+        attachment = pptx_path or outline_path
         count = sender.send_email(
             subject=subject,
             body=body,
             sender_email=sender_email,
             app_password=app_password,
             recipients=recipients,
-            attachments=[outline_path],
+            attachments=[attachment],
             reply_to=config.get("reply_to"),
         )
         print(f"\nSent to {count} recipient(s) via Gmail (BCC).")
+        print(f"Attached: {os.path.basename(attachment)}")
     else:
         print("\nPreview only. Re-run with --send to email the staff list.")
 

@@ -1,0 +1,6 @@
+# The core tool (topic selection, email, text outline, Gmail sending) uses only
+# the Python standard library — no install needed for those.
+#
+# This one package enables generating the real PowerPoint (.pptx) deck each week.
+# Install with:  pip install -r requirements.txt
+python-pptx>=0.6.21
