@@ -1,6 +1,23 @@
-"""Builds the weekly email and slide outline from a selected topic."""
+"""Builds the weekly email and slide outline from a selected topic.
+
+Each topic in topics.json has a list of `sections`; every section is a
+dict with a `heading` (the slide title / agenda item) and `details` (the
+actual factual bullet points shown on that slide). Older topics that still
+use a flat `key_points` list are supported too.
+"""
 
 from datetime import date
+
+
+def get_sections(topic):
+    """Return a normalized list of {heading, details} for a topic.
+
+    Supports both the newer `sections` format (heading + factual details)
+    and the older `key_points` format (headings only, no details).
+    """
+    if topic.get("sections"):
+        return topic["sections"]
+    return [{"heading": kp, "details": []} for kp in topic.get("key_points", [])]
 
 
 def build_email(topic, sender_name="Your Safety Training Team", for_date=None):
@@ -10,7 +27,8 @@ def build_email(topic, sender_name="Your Safety Training Team", for_date=None):
 
     subject = f"Weekly Safety Training: {topic['title']} (Week of {week_of})"
 
-    points = "\n".join(f"  • {p}" for p in topic["key_points"])
+    sections = get_sections(topic)
+    points = "\n".join(f"  • {s['heading']}" for s in sections)
 
     body = f"""Hello team,
 
@@ -37,10 +55,12 @@ def build_slide_outline(topic, for_date=None):
     """Return a list of slides; each slide is a dict with title + bullets.
 
     This is a ready-to-use outline you can paste into PowerPoint or Google
-    Slides (one slide per list item).
+    Slides (one slide per list item). Content slides are populated with the
+    actual FMCSA facts from each section's `details`.
     """
     for_date = for_date or date.today()
     week_of = for_date.strftime("%B %d, %Y")
+    sections = get_sections(topic)
 
     slides = []
 
@@ -55,26 +75,30 @@ def build_slide_outline(topic, for_date=None):
     })
 
     # Overview slide
+    overview = [topic["summary"]]
+    if topic.get("regulation"):
+        overview.append(f"Regulation: {topic['regulation']}")
     slides.append({
         "title": "Overview",
-        "bullets": [topic["summary"]],
+        "bullets": overview,
     })
 
     # Agenda slide
     slides.append({
         "title": "What We'll Cover",
-        "bullets": list(topic["key_points"]),
+        "bullets": [s["heading"] for s in sections],
     })
 
-    # One content slide per key point
-    for point in topic["key_points"]:
+    # One content slide per section, filled with the real facts.
+    for section in sections:
+        bullets = list(section.get("details") or [
+            "Key requirement / best practice:",
+            "Why it matters for safety and compliance:",
+            "How it applies to our operation:",
+        ])
         slides.append({
-            "title": point,
-            "bullets": [
-                "Key requirement / best practice:",
-                "Why it matters for safety and compliance:",
-                "How it applies to our operation:",
-            ],
+            "title": section["heading"],
+            "bullets": bullets,
         })
 
     # Resources slide
@@ -82,8 +106,9 @@ def build_slide_outline(topic, for_date=None):
         "title": "Resources & Questions",
         "bullets": [
             f"FMCSA reference: {topic['source_url']}",
+            f"Regulation: {topic['regulation']}" if topic.get("regulation") else
+            "Verify details against the current FMCSA page before presenting.",
             "Questions? Reply to the training email.",
-            "Thank you for keeping our roads safe.",
         ],
     })
 

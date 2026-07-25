@@ -1,18 +1,61 @@
 {
-  "_comment": "Weekly training topics sourced from FMCSA (fmcsa.dot.gov). Add, remove, or reorder topics freely. 'key_points' become the slide outline. Always verify 'source_url' before sending, since FMCSA occasionally moves pages.",
+  "_comment": "Weekly training topics based on FMCSA regulations (fmcsa.dot.gov). Each section's 'details' are drawn from the underlying Federal Motor Carrier Safety Regulations (49 CFR) cited in 'regulation'. FMCSA occasionally updates guidance and inflation-adjusted penalty amounts, so verify against the live page (source_url) before presenting. Edit freely.",
   "topics": [
     {
       "id": "hours-of-service",
       "title": "Hours of Service (HOS)",
-      "summary": "The federal limits on how long a commercial driver may be on duty and drive before rest is required, designed to prevent fatigued driving.",
+      "summary": "Federal limits on driving and on-duty time for property-carrying commercial drivers, designed to prevent fatigued driving.",
       "source_url": "https://www.fmcsa.dot.gov/regulations/hours-of-service",
-      "key_points": [
-        "11-hour driving limit after 10 consecutive hours off duty",
-        "14-hour on-duty window that cannot be extended by breaks",
-        "Required 30-minute break after 8 cumulative hours of driving",
-        "60/70-hour limit over 7/8 consecutive days",
-        "Short-haul and adverse driving condition exceptions",
-        "Sleeper berth provision and split-sleeper options"
+      "regulation": "49 CFR Part 395",
+      "sections": [
+        {
+          "heading": "11-Hour Driving Limit",
+          "details": [
+            "May drive a maximum of 11 hours after 10 consecutive hours off duty.",
+            "The 10 consecutive hours off duty resets the driving clock.",
+            "Applies to property-carrying drivers (passenger-carrying limits differ)."
+          ]
+        },
+        {
+          "heading": "14-Hour On-Duty Window",
+          "details": [
+            "May not drive beyond the 14th consecutive hour after coming on duty.",
+            "Off-duty time (meals, breaks, fueling) does NOT extend the 14-hour window.",
+            "The window only restarts after another 10 consecutive hours off duty."
+          ]
+        },
+        {
+          "heading": "30-Minute Driving Break",
+          "details": [
+            "Required after 8 cumulative hours of driving time without a 30-minute interruption.",
+            "The break may be off-duty, sleeper berth, or on-duty not driving.",
+            "It is based on driving time, not total on-duty time."
+          ]
+        },
+        {
+          "heading": "60/70-Hour Limit & 34-Hour Restart",
+          "details": [
+            "May not drive after 60 hours on duty in 7 consecutive days, or 70 hours in 8 days.",
+            "The 7/8-day period depends on whether the carrier operates every day of the week.",
+            "A driver may 'restart' the 60/70-hour clock with 34+ consecutive hours off duty."
+          ]
+        },
+        {
+          "heading": "Short-Haul & Adverse Driving Exceptions",
+          "details": [
+            "Short-haul: drivers within a 150 air-mile radius who return to the work reporting location within 14 hours may be exempt from keeping RODS/ELD.",
+            "Adverse driving conditions: the 11-hour and 14-hour limits may be extended by up to 2 hours.",
+            "Adverse conditions mean weather or traffic not known when the trip began."
+          ]
+        },
+        {
+          "heading": "Sleeper Berth Provision",
+          "details": [
+            "The required 10 hours off may be split using the sleeper berth.",
+            "One period of at least 7 consecutive hours in the sleeper, plus a separate period of at least 2 hours (off-duty or sleeper).",
+            "The two periods must total at least 10 hours; neither counts against the 14-hour window."
+          ]
+        }
       ]
     },
     {
@@ -20,13 +63,56 @@
       "title": "Electronic Logging Devices (ELDs)",
       "summary": "ELDs automatically record driving time to help ensure Hours of Service compliance and reduce paperwork errors.",
       "source_url": "https://www.fmcsa.dot.gov/hours-service/elds/electronic-logging-devices",
-      "key_points": [
-        "Who is required to use an ELD and who is exempt",
-        "How an ELD connects to the engine to record driving time",
-        "Reviewing and certifying your daily logs",
-        "Handling malfunctions and the 8-day paper-log rule",
-        "Transferring data to an officer during a roadside inspection",
-        "Keeping supporting documents on file"
+      "regulation": "49 CFR 395.8, 395.20-395.38",
+      "sections": [
+        {
+          "heading": "Who Must Use an ELD",
+          "details": [
+            "Required for most drivers who are currently required to keep Records of Duty Status (RODS).",
+            "Exempt: short-haul drivers not required to keep RODS; drivers using paper logs 8 or fewer days in any 30-day period.",
+            "Also exempt: driveaway-towaway operations and vehicles with an engine older than model year 2000."
+          ]
+        },
+        {
+          "heading": "How an ELD Records Driving",
+          "details": [
+            "Connects to the engine control module (ECM) to automatically capture engine power, motion, miles, and location.",
+            "Records driving time automatically so it cannot be edited away by the driver.",
+            "Location is recorded at intervals and at each change of duty status."
+          ]
+        },
+        {
+          "heading": "Reviewing & Certifying Logs",
+          "details": [
+            "Driver must review, make any allowed edits with annotations, and certify records at the end of each 24-hour period.",
+            "Automatically recorded driving time cannot be edited or reassigned to non-driving status.",
+            "Edits require a note explaining the reason."
+          ]
+        },
+        {
+          "heading": "Malfunctions & 8-Day Rule",
+          "details": [
+            "On a malfunction, the driver must note it and reconstruct RODS on paper for the current day and prior 7 days.",
+            "The driver keeps paper logs until the ELD is repaired or replaced.",
+            "The carrier must correct the malfunction within 8 days."
+          ]
+        },
+        {
+          "heading": "Roadside Data Transfer",
+          "details": [
+            "Must be able to transfer data to an officer by the telematic (web/email) or local (USB/Bluetooth) method the device supports.",
+            "If transfer fails, the driver must display or provide a printout of the records.",
+            "An ELD information packet (user manual, instruction sheet, malfunction sheet, blank logs) must be kept in the vehicle."
+          ]
+        },
+        {
+          "heading": "Supporting Documents",
+          "details": [
+            "Drivers must retain up to 8 supporting documents per 24-hour period (e.g., bills of lading, fuel receipts).",
+            "Supporting documents are submitted to the carrier within 13 days.",
+            "They help verify on-duty, not-driving time."
+          ]
+        }
       ]
     },
     {
@@ -34,13 +120,56 @@
       "title": "Vehicle Inspections & DVIR",
       "summary": "Pre-trip, en-route, and post-trip inspections plus the Driver Vehicle Inspection Report keep unsafe vehicles off the road.",
       "source_url": "https://www.fmcsa.dot.gov/regulations/title/49/section/396.11",
-      "key_points": [
-        "Pre-trip inspection: what to check before every trip",
-        "Brakes, tires, lights, and coupling devices",
-        "En-route checks and post-trip inspection duties",
-        "Completing an accurate Driver Vehicle Inspection Report (DVIR)",
-        "Reporting and correcting defects before the next trip",
-        "Recordkeeping and driver signatures"
+      "regulation": "49 CFR 396.11, 396.13, 392.7",
+      "sections": [
+        {
+          "heading": "Pre-Trip Inspection",
+          "details": [
+            "The driver must be satisfied the vehicle is in safe operating condition before driving (49 CFR 392.7).",
+            "Review the last driver vehicle inspection report and confirm required repairs were made.",
+            "Never operate a vehicle with a defect likely to cause a breakdown or accident."
+          ]
+        },
+        {
+          "heading": "Critical Items to Check",
+          "details": [
+            "Service and parking brakes, steering, lighting devices and reflectors.",
+            "Tires, horn, windshield wipers, rear-vision mirrors.",
+            "Coupling devices, wheels and rims, and emergency equipment."
+          ]
+        },
+        {
+          "heading": "En-Route & Post-Trip Duties",
+          "details": [
+            "Monitor cargo securement and vehicle condition throughout the trip.",
+            "At the end of each driving day, prepare a written post-trip inspection report for each vehicle operated.",
+            "The report covers the same critical safety systems checked pre-trip."
+          ]
+        },
+        {
+          "heading": "Completing the DVIR",
+          "details": [
+            "The Driver Vehicle Inspection Report lists any defect or deficiency that would affect safety or cause a breakdown.",
+            "If no defect is found, the report must state that.",
+            "The driver signs the report; drivers of the same vehicle sign to acknowledge the prior report."
+          ]
+        },
+        {
+          "heading": "Reporting & Correcting Defects",
+          "details": [
+            "The motor carrier must repair any reported defect that affects safe operation before the vehicle is dispatched again.",
+            "The carrier certifies on the report that repairs were made or were unnecessary.",
+            "Correcting defects before the next trip is the whole point of the process."
+          ]
+        },
+        {
+          "heading": "Recordkeeping",
+          "details": [
+            "The carrier retains the original DVIR and certification of repair for at least 3 months.",
+            "Records must be available for inspection.",
+            "Accurate records demonstrate a functioning maintenance program."
+          ]
+        }
       ]
     },
     {
@@ -48,13 +177,56 @@
       "title": "Commercial Driver's License (CDL)",
       "summary": "CDL classes, endorsements, and restrictions that define what a driver is legally qualified to operate.",
       "source_url": "https://www.fmcsa.dot.gov/registration/commercial-drivers-license",
-      "key_points": [
-        "CDL Classes A, B, and C explained",
-        "Endorsements: HazMat (H), Tanker (N), Passenger (P), School Bus (S), Doubles/Triples (T)",
-        "Common restrictions and what they mean",
-        "Keeping your CDL and medical certificate current",
-        "Consequences of driving outside your class or endorsement",
-        "State-specific renewal requirements"
+      "regulation": "49 CFR Part 383",
+      "sections": [
+        {
+          "heading": "CDL Classes A, B, C",
+          "details": [
+            "Class A: combination vehicle with a GCWR of 26,001+ lbs where the towed unit is over 10,000 lbs.",
+            "Class B: a single vehicle of 26,001+ lbs GVWR, or such a vehicle towing up to 10,000 lbs.",
+            "Class C: vehicles not Class A or B that carry 16+ passengers (including the driver) or placarded hazmat."
+          ]
+        },
+        {
+          "heading": "Endorsements",
+          "details": [
+            "H = Hazardous Materials; N = Tank Vehicle; P = Passenger; S = School Bus; T = Doubles/Triples.",
+            "X = combination of tank vehicle and hazardous materials.",
+            "P, S, and H require additional knowledge and/or skills testing; H also requires a TSA background check."
+          ]
+        },
+        {
+          "heading": "Common Restrictions",
+          "details": [
+            "E = no manual transmission; L = no air brakes; Z = no full air brake vehicles.",
+            "M/N = restricted to certain passenger or school bus classes; O = no tractor-trailer.",
+            "Restrictions appear on the license and limit what you may drive."
+          ]
+        },
+        {
+          "heading": "Keeping the CDL Current",
+          "details": [
+            "Maintain a valid medical certificate and keep your self-certification category on file with the state.",
+            "Notify your employer and state of certain convictions and license actions.",
+            "Renew before expiration per your state's schedule."
+          ]
+        },
+        {
+          "heading": "Consequences of Violations",
+          "details": [
+            "Serious traffic violations can lead to CDL disqualification (e.g., 60-day disqualification for two serious violations in 3 years).",
+            "Major offenses (DUI, leaving the scene, using a CMV in a felony) carry at least a 1-year disqualification.",
+            "Driving without the proper class or endorsement is itself a violation."
+          ]
+        },
+        {
+          "heading": "One Driver, One License",
+          "details": [
+            "A CDL holder may hold only one license and must carry it while operating a CMV.",
+            "You must notify your employer of any out-of-state traffic conviction within 30 days.",
+            "State renewal and testing requirements apply on top of the federal minimums."
+          ]
+        }
       ]
     },
     {
@@ -62,13 +234,56 @@
       "title": "Drug & Alcohol Clearinghouse",
       "summary": "The FMCSA online database of CDL driver drug and alcohol program violations that employers must query.",
       "source_url": "https://clearinghouse.fmcsa.dot.gov/",
-      "key_points": [
-        "What the Clearinghouse is and why it exists",
-        "Pre-employment and annual query requirements",
-        "How violations are reported and by whom",
-        "The return-to-duty (RTD) process",
-        "Driver consent and viewing your own record",
-        "Employer responsibilities and deadlines"
+      "regulation": "49 CFR Part 382, Subpart G",
+      "sections": [
+        {
+          "heading": "What the Clearinghouse Is",
+          "details": [
+            "A secure online database of drug and alcohol program violations by CDL and CLP drivers.",
+            "It gives employers real-time information so a driver cannot conceal violations by changing jobs.",
+            "It became operational on January 6, 2020."
+          ]
+        },
+        {
+          "heading": "Query Requirements",
+          "details": [
+            "Employers must run a full pre-employment query (with driver consent) before allowing safety-sensitive duties.",
+            "Employers must run at least one query per year for each current driver.",
+            "A full query requires specific driver consent; a limited annual query needs general consent."
+          ]
+        },
+        {
+          "heading": "How Violations Are Reported",
+          "details": [
+            "Employers report actual-knowledge violations, refusals, and non-test alcohol/drug use.",
+            "Medical Review Officers report verified positive drug tests; C/TPAs may report on an employer's behalf.",
+            "Substance Abuse Professionals report return-to-duty process milestones."
+          ]
+        },
+        {
+          "heading": "Return-to-Duty (RTD) Process",
+          "details": [
+            "A driver with a violation is prohibited from safety-sensitive functions until completing the RTD process.",
+            "The process is directed by a qualified Substance Abuse Professional (SAP): evaluation, education/treatment, and a negative RTD test.",
+            "A follow-up testing plan (at least 6 tests in 12 months) follows return to duty."
+          ]
+        },
+        {
+          "heading": "Driver Registration & Consent",
+          "details": [
+            "Drivers should register to provide consent for full queries and to view their own record.",
+            "A driver must give electronic consent before an employer can run a full query.",
+            "Drivers can see their own violation and RTD status at any time."
+          ]
+        },
+        {
+          "heading": "Employer Deadlines",
+          "details": [
+            "Report actual-knowledge violations and test refusals by the end of the third business day.",
+            "Do not allow a prohibited driver to perform safety-sensitive functions.",
+            "Keep query records for at least 3 years."
+          ]
+        }
       ]
     },
     {
@@ -76,13 +291,56 @@
       "title": "Drug & Alcohol Testing Program",
       "summary": "The DOT-required testing program covering pre-employment, random, post-accident, and reasonable-suspicion testing.",
       "source_url": "https://www.fmcsa.dot.gov/regulations/drug-alcohol-testing-program",
-      "key_points": [
-        "The six DOT testing scenarios",
-        "Substances tested for under the DOT panel",
-        "Random testing rates and selection",
-        "Post-accident testing thresholds and timing",
-        "Reasonable-suspicion training for supervisors",
-        "Consequences of a refusal or positive result"
+      "regulation": "49 CFR Part 382; 49 CFR Part 40",
+      "sections": [
+        {
+          "heading": "The Six Testing Scenarios",
+          "details": [
+            "Pre-employment, random, post-accident, reasonable suspicion, return-to-duty, and follow-up.",
+            "Pre-employment requires a negative drug test before performing safety-sensitive functions.",
+            "Return-to-duty and follow-up tests are directly observed."
+          ]
+        },
+        {
+          "heading": "What Is Tested",
+          "details": [
+            "DOT drug panel: marijuana, cocaine, opioids, amphetamines, and phencyclidine (PCP).",
+            "Alcohol is tested by breath or saliva; a confirmation breath test uses an evidential device.",
+            "A BAC of 0.04 or higher is a violation; 0.02-0.039 requires removal from duty for a period."
+          ]
+        },
+        {
+          "heading": "Random Testing",
+          "details": [
+            "Drivers are selected by a scientifically valid random method; every driver has an equal chance each selection.",
+            "FMCSA sets minimum annual rates (recently 50% for controlled substances and 10% for alcohol).",
+            "Random tests must be spread reasonably throughout the year."
+          ]
+        },
+        {
+          "heading": "Post-Accident Testing",
+          "details": [
+            "Required after a fatality; or when a driver is cited AND the accident involves a tow-away or an injury treated away from the scene.",
+            "Alcohol test should occur within 8 hours; drug test within 32 hours.",
+            "Document why a test was or was not performed."
+          ]
+        },
+        {
+          "heading": "Reasonable Suspicion",
+          "details": [
+            "Based on specific, contemporaneous observations of appearance, behavior, speech, or odor.",
+            "Supervisors need at least 60 minutes of training on drugs and 60 minutes on alcohol to make the determination.",
+            "The observation must be documented."
+          ]
+        },
+        {
+          "heading": "Consequences",
+          "details": [
+            "A positive test or refusal removes the driver from safety-sensitive duty immediately.",
+            "The driver cannot return until completing the SAP/return-to-duty process.",
+            "A refusal to test is treated the same as a positive result."
+          ]
+        }
       ]
     },
     {
@@ -90,13 +348,56 @@
       "title": "Cargo Securement",
       "summary": "Rules for tie-downs, working load limits, and load distribution that keep freight from shifting or falling.",
       "source_url": "https://www.fmcsa.dot.gov/regulations/cargo-securement/cargo-securement-rules",
-      "key_points": [
-        "Working Load Limit (WLL) and the aggregate rule",
-        "Minimum number of tie-downs by cargo length and weight",
-        "Securing specific commodities (logs, vehicles, pipe, etc.)",
-        "Blocking, bracing, and friction mats",
-        "Inspecting tie-downs during the trip",
-        "Preventing load shift and rollover"
+      "regulation": "49 CFR Part 393, Subpart I",
+      "sections": [
+        {
+          "heading": "Working Load Limit & Aggregate Rule",
+          "details": [
+            "The aggregate working load limit (WLL) of all tie-downs must be at least 50% of the cargo's weight.",
+            "A tie-down's WLL is the lowest-rated component in that tie-down (strap, chain, anchor point, or binder).",
+            "WLL is roughly one-third of the component's breaking strength."
+          ]
+        },
+        {
+          "heading": "Minimum Number of Tie-Downs",
+          "details": [
+            "Article 5 ft or less and 1,100 lbs or less: at least 1 tie-down.",
+            "Article 5 ft or less but over 1,100 lbs, or longer than 5 ft up to 10 ft: at least 2 tie-downs.",
+            "Over 10 ft: 2 tie-downs, plus 1 more for every additional 10 ft (or fraction)."
+          ]
+        },
+        {
+          "heading": "Securing Specific Commodities",
+          "details": [
+            "Part 393 has commodity-specific rules for logs, dressed lumber, metal coils, paper rolls, concrete pipe, vehicles, and heavy machinery.",
+            "Each commodity type has minimum tie-down and blocking requirements.",
+            "Use the rule that applies to what you are actually hauling."
+          ]
+        },
+        {
+          "heading": "Blocking, Bracing & Friction",
+          "details": [
+            "Cargo must be firmly immobilized by structures of adequate strength, dunnage, blocking, bracing, or a combination.",
+            "Front-end structure (headboard) helps prevent forward shift.",
+            "Friction mats can contribute to securement but count only per their rated resistance."
+          ]
+        },
+        {
+          "heading": "Inspecting Tie-Downs En Route",
+          "details": [
+            "Inspect the cargo and securement within the first 50 miles of a trip and make adjustments as needed.",
+            "Re-examine at least every 150 miles or 3 hours, whichever comes first, and at each change of duty status.",
+            "Re-tighten and re-secure whenever cargo has shifted."
+          ]
+        },
+        {
+          "heading": "Preventing Load Shift",
+          "details": [
+            "Distribute weight to keep the vehicle stable and within axle limits.",
+            "A shifting load raises the center of gravity and rollover risk.",
+            "Loose or fallen cargo endangers everyone on the road."
+          ]
+        }
       ]
     },
     {
@@ -104,13 +405,56 @@
       "title": "Hazardous Materials Transport",
       "summary": "Requirements for placarding, shipping papers, and handling when transporting hazardous materials.",
       "source_url": "https://www.fmcsa.dot.gov/regulations/hazardous-materials",
-      "key_points": [
-        "The nine hazard classes",
-        "Placarding requirements and thresholds",
-        "Shipping papers and emergency response information",
-        "HazMat endorsement and security awareness training",
-        "Segregation and loading/unloading rules",
-        "What to do in a release or incident"
+      "regulation": "49 CFR Parts 100-180, 397",
+      "sections": [
+        {
+          "heading": "The Nine Hazard Classes",
+          "details": [
+            "1 Explosives, 2 Gases, 3 Flammable Liquids, 4 Flammable Solids, 5 Oxidizers/Organic Peroxides.",
+            "6 Toxic/Infectious, 7 Radioactive, 8 Corrosives, 9 Miscellaneous.",
+            "Each class has its own handling, packaging, and placarding rules."
+          ]
+        },
+        {
+          "heading": "Placarding",
+          "details": [
+            "Table 1 materials require placards for any quantity.",
+            "Table 2 materials require placards when the aggregate gross weight is 1,001 lbs or more.",
+            "Placards must be on all four sides and match the material being carried."
+          ]
+        },
+        {
+          "heading": "Shipping Papers & Emergency Info",
+          "details": [
+            "Shipping papers must be within the driver's reach and readily accessible (in a door pouch or on the seat when driving).",
+            "Emergency response information and an emergency contact number must accompany the shipment.",
+            "Keep the Emergency Response Guidebook (ERG) available."
+          ]
+        },
+        {
+          "heading": "Endorsement & Training",
+          "details": [
+            "A HazMat (H) endorsement requires a TSA security threat assessment.",
+            "HazMat employees need general awareness, function-specific, safety, and security awareness training.",
+            "Training must be repeated at least every 3 years."
+          ]
+        },
+        {
+          "heading": "Segregation & Loading",
+          "details": [
+            "Incompatible materials must be segregated per the segregation table.",
+            "Secure packages against shifting and protect them from damage during transport.",
+            "Follow class-specific loading and unloading precautions."
+          ]
+        },
+        {
+          "heading": "In a Release or Incident",
+          "details": [
+            "Protect yourself and the scene, then use the ERG to identify hazards and initial response.",
+            "Notify the required authorities and your carrier.",
+            "Certain incidents require a written report to PHMSA."
+          ]
+        }
       ]
     },
     {
@@ -118,13 +462,48 @@
       "title": "Distracted Driving",
       "summary": "Federal restrictions on hand-held phone use and texting, and the broader risks of taking your attention off the road.",
       "source_url": "https://www.fmcsa.dot.gov/driver-safety/distracted-driving",
-      "key_points": [
-        "Federal ban on texting while driving a CMV",
-        "Hand-held mobile phone restrictions",
-        "Penalties for drivers and carriers",
-        "The three types of distraction: visual, manual, cognitive",
-        "Stopping-distance math at highway speed",
-        "Building distraction-free driving habits"
+      "regulation": "49 CFR 392.80, 392.82",
+      "sections": [
+        {
+          "heading": "Texting Ban",
+          "details": [
+            "Drivers may not text while operating a commercial motor vehicle.",
+            "Texting includes manually entering text, reading from, or reaching for a device to do so.",
+            "The rule applies whenever the vehicle is on a roadway, including temporary stops in traffic."
+          ]
+        },
+        {
+          "heading": "Hand-Held Phone Restrictions",
+          "details": [
+            "No holding a mobile phone, dialing more than a single button, or reaching for a phone that requires leaving the seated, belted position.",
+            "Hands-free use is allowed only if the phone is within reach and operated with one button.",
+            "The safest practice is to not use the phone at all while driving."
+          ]
+        },
+        {
+          "heading": "Penalties",
+          "details": [
+            "Drivers face federal civil penalties (up to several thousand dollars) and disqualification after multiple offenses.",
+            "Motor carriers that allow or require the behavior face substantially higher penalties.",
+            "Violations also count against CSA Unsafe Driving scores."
+          ]
+        },
+        {
+          "heading": "Three Types of Distraction",
+          "details": [
+            "Visual: taking your eyes off the road.",
+            "Manual: taking your hands off the wheel.",
+            "Cognitive: taking your mind off driving. Texting involves all three."
+          ]
+        },
+        {
+          "heading": "The Real-World Risk",
+          "details": [
+            "At 55 mph, glancing at a device for about 5 seconds covers roughly the length of a football field.",
+            "Drivers who text take their eyes off the road far longer than they realize.",
+            "No message is worth a crash."
+          ]
+        }
       ]
     },
     {
@@ -132,13 +511,56 @@
       "title": "Driver Fatigue Management",
       "summary": "Recognizing and preventing fatigue, one of the leading contributing factors in commercial vehicle crashes.",
       "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/driver-fatigue",
-      "key_points": [
-        "Warning signs of fatigue behind the wheel",
-        "Sleep debt and circadian rhythm effects",
-        "Sleep apnea awareness and screening",
-        "Effective use of rest breaks",
-        "Diet, hydration, and caffeine strategies",
-        "When to stop and rest instead of pushing on"
+      "regulation": "FMCSA driver safety guidance; see also 49 CFR Part 395 (HOS)",
+      "sections": [
+        {
+          "heading": "Warning Signs of Fatigue",
+          "details": [
+            "Frequent yawning, heavy eyelids, and drifting from your lane.",
+            "Missing exits, trouble focusing, and wandering thoughts.",
+            "If you notice these signs, stop and rest — do not push through."
+          ]
+        },
+        {
+          "heading": "Sleep Debt & Body Clock",
+          "details": [
+            "Most adults need 7-8 hours of sleep; lost sleep accumulates as sleep debt.",
+            "The body's circadian rhythm makes early morning and mid-afternoon high-risk drowsy periods.",
+            "Only sleep — not coffee or fresh air — repays sleep debt."
+          ]
+        },
+        {
+          "heading": "Sleep Apnea Awareness",
+          "details": [
+            "Obstructive sleep apnea interrupts breathing during sleep and causes daytime drowsiness.",
+            "Loud snoring, gasping, and morning headaches are common signs.",
+            "It is treatable; talk to a medical examiner if you have symptoms."
+          ]
+        },
+        {
+          "heading": "Using Rest Breaks Well",
+          "details": [
+            "Plan trips to include real rest, not just required breaks.",
+            "A short nap of 10-45 minutes can restore alertness.",
+            "Get adequate sleep before, not just during, a long trip."
+          ]
+        },
+        {
+          "heading": "Diet, Hydration & Caffeine",
+          "details": [
+            "Heavy meals promote drowsiness; lighter, balanced meals help.",
+            "Stay hydrated and limit caffeine late in a shift so it doesn't disrupt sleep.",
+            "Caffeine is a short-term aid, not a substitute for sleep."
+          ]
+        },
+        {
+          "heading": "When to Stop",
+          "details": [
+            "If you are fighting to stay awake, get off the road at a safe location.",
+            "No schedule justifies driving while impaired by fatigue.",
+            "A brief delay is always better than a crash."
+          ]
+        }
       ]
     },
     {
@@ -146,13 +568,48 @@
       "title": "CSA & Roadside Inspections",
       "summary": "How the Compliance, Safety, Accountability program and roadside inspection scores affect drivers and carriers.",
       "source_url": "https://www.fmcsa.dot.gov/safety/csa/compliance-safety-accountability",
-      "key_points": [
-        "The seven BASIC safety categories",
-        "How roadside inspection results feed CSA scores",
-        "Severity weighting and time weighting of violations",
-        "The North American Standard inspection levels",
-        "How drivers can protect their record",
-        "Reviewing and disputing data through DataQs"
+      "regulation": "FMCSA Safety Measurement System (SMS)",
+      "sections": [
+        {
+          "heading": "The Seven BASICs",
+          "details": [
+            "Unsafe Driving, Hours-of-Service Compliance, Driver Fitness, Controlled Substances/Alcohol.",
+            "Vehicle Maintenance, Hazardous Materials Compliance, and the Crash Indicator.",
+            "Each category groups related violations to measure safety performance."
+          ]
+        },
+        {
+          "heading": "How Scores Are Built",
+          "details": [
+            "Roadside inspection and crash data feed the Safety Measurement System (SMS).",
+            "Violations are weighted by severity (1-10) based on crash risk.",
+            "More recent events are weighted more heavily than older ones (time weighting)."
+          ]
+        },
+        {
+          "heading": "Inspection Levels",
+          "details": [
+            "Level I: full North American Standard inspection of driver and vehicle.",
+            "Level II: walk-around; Level III: driver credentials only.",
+            "Levels IV-VI cover special inspections, vehicle-only, and radioactive materials."
+          ]
+        },
+        {
+          "heading": "Protecting Your Record",
+          "details": [
+            "A clean inspection also counts — it improves the safety picture.",
+            "Keep credentials, logs, and the vehicle in order to avoid violations.",
+            "Out-of-service violations carry the most weight; address defects before driving."
+          ]
+        },
+        {
+          "heading": "Disputing Data (DataQs)",
+          "details": [
+            "Use the FMCSA DataQs system to request review of inspection or crash data you believe is incorrect.",
+            "Provide documentation supporting your challenge.",
+            "Corrections can update the carrier's and driver's records."
+          ]
+        }
       ]
     },
     {
@@ -160,13 +617,48 @@
       "title": "Driver Medical Qualifications",
       "summary": "DOT physical requirements and the medical certificate that keep drivers physically fit for duty.",
       "source_url": "https://www.fmcsa.dot.gov/medical/driver-medical-requirements/medical-requirements",
-      "key_points": [
-        "The DOT physical and the National Registry of Certified Medical Examiners",
-        "Common disqualifying conditions",
-        "Medical certificate validity periods",
-        "Vision, hearing, and blood pressure standards",
-        "Reporting changes in health status",
-        "Keeping your medical card current with your CDL"
+      "regulation": "49 CFR Part 391, Subpart E",
+      "sections": [
+        {
+          "heading": "The DOT Physical",
+          "details": [
+            "Must be performed by a medical examiner listed on the National Registry of Certified Medical Examiners.",
+            "The exam covers vision, hearing, blood pressure, and overall physical qualification.",
+            "A qualified driver receives a Medical Examiner's Certificate (medical card)."
+          ]
+        },
+        {
+          "heading": "Certificate Validity",
+          "details": [
+            "The medical certificate is valid for up to 24 months.",
+            "The examiner may issue a shorter certificate to monitor a condition (e.g., blood pressure).",
+            "Keep the certificate current and on file with your state licensing agency."
+          ]
+        },
+        {
+          "heading": "Vision & Hearing Standards",
+          "details": [
+            "Vision: at least 20/40 in each eye (with or without correction) and a 70-degree field of vision in each eye.",
+            "Ability to recognize red, green, and amber traffic signal colors.",
+            "Hearing: perceive a forced whisper at 5 feet, or meet the audiometric standard."
+          ]
+        },
+        {
+          "heading": "Blood Pressure & Conditions",
+          "details": [
+            "Blood pressure is categorized; higher readings can shorten or deny certification.",
+            "Certain conditions require specific evaluation (e.g., diabetes, cardiovascular, sleep apnea).",
+            "Some previously disqualifying conditions now have federal exemption or waiver pathways."
+          ]
+        },
+        {
+          "heading": "Reporting Health Changes",
+          "details": [
+            "Report significant changes in your health that could affect safe driving.",
+            "Do not drive if a condition or medication makes it unsafe.",
+            "Keep the medical card matching your CDL to avoid a downgrade."
+          ]
+        }
       ]
     },
     {
@@ -174,13 +666,48 @@
       "title": "Entry-Level Driver Training (ELDT)",
       "summary": "The federal minimum training standards for new CDL applicants and certain upgrades and endorsements.",
       "source_url": "https://www.fmcsa.dot.gov/registration/entry-level-driver-training-eldt",
-      "key_points": [
-        "Who must complete ELDT before testing",
-        "Theory and behind-the-wheel curriculum requirements",
-        "Using the Training Provider Registry (TPR)",
-        "How training completion is reported to FMCSA",
-        "Applies to Class A/B upgrades and P, S, H endorsements",
-        "Choosing a registered training provider"
+      "regulation": "49 CFR Part 380, Subpart F",
+      "sections": [
+        {
+          "heading": "Who Must Complete ELDT",
+          "details": [
+            "Applicants obtaining a Class A or Class B CDL for the first time.",
+            "Drivers upgrading from Class B to Class A.",
+            "Applicants seeking a passenger (P), school bus (S), or hazardous materials (H) endorsement for the first time."
+          ]
+        },
+        {
+          "heading": "Effective Date",
+          "details": [
+            "The ELDT requirements took effect February 7, 2022.",
+            "Training must be completed before taking the CDL skills test (or the knowledge test for H).",
+            "Applies to applicants whose CLP or CDL application is dated on or after that date."
+          ]
+        },
+        {
+          "heading": "Theory & Behind-the-Wheel",
+          "details": [
+            "Curriculum has both theory (knowledge) and behind-the-wheel (range and public road) components.",
+            "There is no federal minimum number of hours, but the trainee must demonstrate proficiency.",
+            "The provider assesses and documents proficiency."
+          ]
+        },
+        {
+          "heading": "Training Provider Registry (TPR)",
+          "details": [
+            "Training must be delivered by a provider listed on the FMCSA Training Provider Registry.",
+            "Choose a registered provider before beginning training.",
+            "Only registered providers can report valid completions."
+          ]
+        },
+        {
+          "heading": "Completion Reporting",
+          "details": [
+            "The provider electronically submits the trainee's completion to the TPR, usually by midnight of the second business day.",
+            "FMCSA transmits the record to the state driver licensing agency.",
+            "The state verifies completion before administering the CDL test."
+          ]
+        }
       ]
     },
     {
@@ -188,13 +715,56 @@
       "title": "Adverse Driving Conditions",
       "summary": "Adjusting speed and following distance and knowing when to stop in rain, snow, ice, fog, and high wind.",
       "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/cmv-driving-tips-driving-adverse-conditions",
-      "key_points": [
-        "Reducing speed for wet, snowy, and icy roads",
-        "Increasing following distance in poor traction",
-        "Managing hydroplaning and skids",
-        "Driving safely in fog and reduced visibility",
-        "High-wind precautions for high-profile vehicles",
-        "When conditions require you to stop and wait"
+      "regulation": "49 CFR 392.14 (hazardous conditions); FMCSA driving tips",
+      "sections": [
+        {
+          "heading": "Reduce Speed for Conditions",
+          "details": [
+            "Regulations require extreme caution when hazardous conditions reduce traction or visibility (49 CFR 392.14).",
+            "Reduce speed by about one-third on wet roads and by half or more on snow.",
+            "Posted limits assume ideal conditions — slow down below them when needed."
+          ]
+        },
+        {
+          "heading": "Increase Following Distance",
+          "details": [
+            "Add extra following distance when traction is poor.",
+            "Large vehicles need much more distance to stop on slick surfaces.",
+            "More space gives you time to react to sudden stops."
+          ]
+        },
+        {
+          "heading": "Managing Skids & Hydroplaning",
+          "details": [
+            "Hydroplaning can occur above roughly 30 mph on wet roads, especially with worn tires.",
+            "If you hydroplane, ease off the accelerator and keep the wheel steady — do not brake hard.",
+            "In a skid, steer in the direction you want the front of the vehicle to go."
+          ]
+        },
+        {
+          "heading": "Fog & Reduced Visibility",
+          "details": [
+            "Use low beams (high beams reflect back and worsen visibility).",
+            "Slow down and increase distance; use the right edge line as a guide.",
+            "If visibility is dangerously low, pull well off the road and turn on hazard lights."
+          ]
+        },
+        {
+          "heading": "High Wind",
+          "details": [
+            "High-profile vehicles and empty trailers are vulnerable to crosswinds.",
+            "Reduce speed and keep a firm grip on the wheel; watch for gusts near openings and overpasses.",
+            "Strong winds may require stopping until conditions improve."
+          ]
+        },
+        {
+          "heading": "When to Stop",
+          "details": [
+            "If conditions become too dangerous, the safest choice is to stop at a safe location.",
+            "The adverse driving conditions HOS exception gives you up to 2 extra hours — but never an excuse to drive unsafely.",
+            "Waiting out a storm beats risking a crash."
+          ]
+        }
       ]
     },
     {
@@ -202,13 +772,48 @@
       "title": "Work Zone Safety",
       "summary": "Driving safely through construction and maintenance zones to protect workers and other motorists.",
       "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/cmv-driving-tips-too-fast-conditions",
-      "key_points": [
-        "Slowing down and obeying posted work-zone limits",
-        "Increasing following distance approaching a zone",
-        "Watching for workers, flaggers, and equipment",
-        "Managing merges and lane shifts safely",
-        "Avoiding distractions where they matter most",
-        "Expecting sudden stops and queue backups"
+      "regulation": "FMCSA driver safety guidance",
+      "sections": [
+        {
+          "heading": "Slow Down and Obey Signs",
+          "details": [
+            "Reduce speed as posted and be ready for lower work-zone limits.",
+            "Fines for speeding in work zones are often doubled.",
+            "Large vehicles need far more distance to slow safely."
+          ]
+        },
+        {
+          "heading": "Increase Following Distance",
+          "details": [
+            "Traffic in work zones stops suddenly and unpredictably.",
+            "Leave extra space so you are never forced into a hard stop.",
+            "Rear-end collisions are among the most common work-zone crashes."
+          ]
+        },
+        {
+          "heading": "Watch for Workers & Equipment",
+          "details": [
+            "Workers, flaggers, and equipment may be close to the travel lane.",
+            "Obey flaggers' instructions — they have authority to direct traffic.",
+            "Expect workers to be near blind spots."
+          ]
+        },
+        {
+          "heading": "Manage Merges & Lane Shifts",
+          "details": [
+            "Merge early and smoothly when a lane closure is announced.",
+            "Signal well ahead and check mirrors and blind spots carefully.",
+            "Avoid last-second lane changes near the taper."
+          ]
+        },
+        {
+          "heading": "Stay Focused",
+          "details": [
+            "Eliminate distractions — work zones demand full attention.",
+            "Scan far ahead for brake lights and changing patterns.",
+            "Expect queues and sudden backups."
+          ]
+        }
       ]
     },
     {
@@ -216,13 +821,56 @@
       "title": "Speed & Space Management",
       "summary": "Controlling speed and maintaining a safe cushion of space in all directions around the vehicle.",
       "source_url": "https://www.fmcsa.dot.gov/safety/driver-safety/cmv-driving-tips-following-too-closely",
-      "key_points": [
-        "Following distance rules for large vehicles",
-        "Stopping distance = perception + reaction + braking",
-        "Managing space to the sides and overhead",
-        "Speed and stopping distance on grades",
-        "Speed management in curves and ramps",
-        "Adjusting for weight, road, and weather"
+      "regulation": "FMCSA driver safety guidance",
+      "sections": [
+        {
+          "heading": "Following Distance",
+          "details": [
+            "A common rule: at least 1 second of following distance per 10 feet of vehicle length under 40 mph.",
+            "Add 1 more second above 40 mph.",
+            "Increase the cushion in bad weather, at night, or when heavy."
+          ]
+        },
+        {
+          "heading": "Total Stopping Distance",
+          "details": [
+            "Stopping distance = perception distance + reaction distance + braking distance.",
+            "At highway speed a loaded truck can take the length of a football field or more to stop.",
+            "Stopping distance grows sharply as speed increases."
+          ]
+        },
+        {
+          "heading": "Space to the Sides & Above",
+          "details": [
+            "Keep the vehicle centered and avoid traveling beside others in your blind spots.",
+            "Watch overhead clearance for bridges, signs, and wires.",
+            "Leave yourself an escape path whenever possible."
+          ]
+        },
+        {
+          "heading": "Speed on Grades",
+          "details": [
+            "Select a safe, lower gear before starting down a long grade.",
+            "Use engine braking and steady, controlled braking to avoid overheating brakes.",
+            "Never coast down a steep grade in neutral."
+          ]
+        },
+        {
+          "heading": "Speed in Curves & Ramps",
+          "details": [
+            "Slow down before a curve or ramp, not while in it.",
+            "Posted ramp speeds are set for cars; heavy vehicles should go slower.",
+            "Excess speed in a curve is a leading cause of rollovers."
+          ]
+        },
+        {
+          "heading": "Adjust for Weight & Road",
+          "details": [
+            "A heavier load needs more distance to stop and is easier to roll over.",
+            "Empty trucks can actually have less traction and longer stops on some surfaces.",
+            "Match your speed to weight, road, weather, and traffic."
+          ]
+        }
       ]
     }
   ]
