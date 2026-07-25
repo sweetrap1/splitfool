@@ -1,0 +1,69 @@
+========================================================================
+ WEEKLY FMCSA TRAINING EMAIL - QUICK START (run on your own PC)
+========================================================================
+
+WHAT THIS DOES
+  Every week it picks a new FMCSA safety topic, writes the email, and
+  builds a slide outline. It can also email your staff list via Gmail.
+  It cycles through all 16 topics before any repeat.
+
+------------------------------------------------------------------------
+ONE-TIME SETUP
+------------------------------------------------------------------------
+
+1. INSTALL PYTHON (if you don't have it)
+   - Go to https://www.python.org/downloads/
+   - Windows: during install, CHECK the box "Add Python to PATH".
+   - To confirm, open a terminal / Command Prompt and type:  python --version
+
+2. GET THE FILES ONTO YOUR PC
+   - Download this "training-email" folder to somewhere easy, like your
+     Desktop or Documents.
+
+3. (Only if you want to SEND emails) SET UP GMAIL
+   - Make a copy of "config.example.json" named  config.json
+       Open it and fill in your Gmail address and sender name.
+   - Make a copy of "recipients.example.txt" named  recipients.txt
+       Put one staff email address per line.
+   - Create a Gmail "App Password":
+       a) Turn on 2-Step Verification: https://myaccount.google.com/security
+       b) Create an App Password:      https://myaccount.google.com/apppasswords
+       c) Copy the 16-character password Google gives you.
+
+------------------------------------------------------------------------
+RUNNING IT EACH WEEK
+------------------------------------------------------------------------
+
+  PREVIEW (no email sent):
+     Windows: double-click  run.bat
+     Mac:     ./run.sh
+     ...or type:  python main.py
+     -> Look in the "output" folder for the email + slide outline.
+
+  ACTUALLY SEND to your staff:
+     Open run.bat in Notepad and follow the notes at the bottom to add
+     your App Password and switch it to send mode. Then double-click it.
+     ...or type:  python main.py --send
+
+------------------------------------------------------------------------
+MAKE IT AUTOMATIC EVERY MONDAY (Windows Task Scheduler)
+------------------------------------------------------------------------
+  1. Open "Task Scheduler" from the Start menu.
+  2. Click "Create Basic Task" -> name it "Weekly Training Email".
+  3. Trigger: Weekly -> choose Monday -> pick a time (e.g. 7:00 AM).
+  4. Action: "Start a program".
+       Program/script:  python
+       Add arguments:   main.py --send
+       Start in:        the full path to this training-email folder
+  5. Finish. (Your PC must be ON and signed in at that time to run.)
+
+------------------------------------------------------------------------
+NOTES
+------------------------------------------------------------------------
+  - Nothing is emailed unless you use --send. Preview is always safe.
+  - Recipients are hidden with BCC, so no one sees the full list.
+  - Topic content is based on the federal regulations (49 CFR). Each
+    slide lists its FMCSA link and CFR citation -- click through to
+    confirm current penalty amounts / testing rates before presenting.
+  - Full details are in README.md.
+========================================================================
