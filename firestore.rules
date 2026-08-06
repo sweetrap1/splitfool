@@ -34,15 +34,19 @@ service cloud.firestore {
       // ── Helper functions ────────────────────────────────────────────────────
 
       // Caller is already a member of this group.
+      // (Also includes creators and a fallback for legacy groups missing memberIds)
       function isExistingMember() {
-        return request.auth.uid in resource.data.memberIds;
+        let isCreator = request.auth.uid == resource.data.get('creatorId', '');
+        let inMemberIds = request.auth.uid in resource.data.get('memberIds', []);
+        let isOldGroup = !('memberIds' in resource.data);
+        return inMemberIds || isCreator || isOldGroup;
       }
 
       // New user joining: they add exactly their own UID to memberIds,
       // no existing member UIDs are removed.
       function isJoiningNewMember() {
-        let incomingMemberIds = request.resource.data.memberIds;
-        let existingMemberIds = resource.data.memberIds;
+        let incomingMemberIds = request.resource.data.get('memberIds', []);
+        let existingMemberIds = resource.data.get('memberIds', []);
         return incomingMemberIds.hasAll(existingMemberIds)
                && request.auth.uid in incomingMemberIds
                && incomingMemberIds.size() == existingMemberIds.size() + 1;
@@ -50,7 +54,7 @@ service cloud.firestore {
 
       // creatorId must match what's already stored — no one can self-promote.
       function isCreatorIdImmutable() {
-        return request.resource.data.creatorId == resource.data.creatorId;
+        return request.resource.data.get('creatorId', '') == resource.data.get('creatorId', '');
       }
 
       // memberIds rules:
@@ -58,9 +62,9 @@ service cloud.firestore {
       //   - All other members may only grow memberIds (join) or remove
       //     themselves (leave). They cannot evict other members.
       function isMemberIdsValid() {
-        let incoming = request.resource.data.memberIds;
-        let existing = resource.data.memberIds;
-        let isCreator = request.auth.uid == resource.data.creatorId;
+        let incoming = request.resource.data.get('memberIds', []);
+        let existing = resource.data.get('memberIds', []);
+        let isCreator = request.auth.uid == resource.data.get('creatorId', '');
         // Creator has full control.
         // Non-creators: incoming must contain everything except possibly themselves.
         return isCreator
