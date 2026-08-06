@@ -8,7 +8,6 @@
     "ignore": [
       "firebase.json",
       "**/node_modules/**",
-      "**/.*",
       "android.keystore",
       "app/**",
       "build/**",
@@ -17,6 +16,17 @@
       "firestore.indexes.json",
       "*.md",
       "package*.json"
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
     ],
     "rewrites": [
       {

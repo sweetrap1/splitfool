@@ -57,7 +57,7 @@ android {
         applicationId "app.web.splitfool_4ca6b.twa"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 3
+        versionCode 4
         versionName ""
 
         // The name for the application
