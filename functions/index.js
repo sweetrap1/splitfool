@@ -72,7 +72,112 @@ exports.onexpenseadded = onDocumentUpdated("groups/{groupId}", async (event) => 
     }
 });
 
-// 2. Monthly Reminder for unsettled balances (Runs on the 1st of every month)
+// Advances a 'YYYY-MM-DD' date string by one period (UTC-based).
+function addPeriod(dateStr, frequency) {
+    const d = new Date(dateStr + "T00:00:00Z");
+    if (frequency === "weekly") {
+        d.setUTCDate(d.getUTCDate() + 7);
+    } else {
+        d.setUTCMonth(d.getUTCMonth() + 1);
+    }
+    return d.toISOString().slice(0, 10);
+}
+
+// 2. Recurring Expenses: auto-add due expenses and notify their creator (Runs daily)
+exports.processrecurringexpenses = onSchedule("0 13 * * *", async (event) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const groupsSnapshot = await db.collection("groups").get();
+
+    for (const groupDoc of groupsSnapshot.docs) {
+        const group = groupDoc.data();
+        const templates = group.recurringExpenses || [];
+        const hasDue = templates.some(r => r.active && r.nextDate <= todayStr);
+        if (!hasDue) continue;
+
+        // uid -> array of { description, amount, currency, groupName }
+        const notifyMap = {};
+
+        try {
+            await db.runTransaction(async (t) => {
+                const ref = groupDoc.ref;
+                const freshDoc = await t.get(ref);
+                if (!freshDoc.exists) return;
+
+                const freshData = freshDoc.data();
+                const expenses = freshData.expenses || [];
+                const freshTemplates = freshData.recurringExpenses || [];
+
+                freshTemplates.forEach(template => {
+                    if (!template.active) return;
+
+                    let next = template.nextDate;
+                    let addedCount = 0;
+                    // Cap catch-up so a long-dormant template can't flood the group.
+                    while (next && next <= todayStr && addedCount < 6) {
+                        expenses.push({
+                            id: "e_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+                            description: template.description,
+                            amount: template.amount,
+                            currency: template.currency,
+                            payerId: template.payerId,
+                            payers: template.payers,
+                            splitType: template.splitType,
+                            participants: template.participants,
+                            recurringId: template.id
+                        });
+
+                        if (template.createdBy) {
+                            if (!notifyMap[template.createdBy]) notifyMap[template.createdBy] = [];
+                            notifyMap[template.createdBy].push({
+                                description: template.description,
+                                amount: template.amount,
+                                currency: template.currency,
+                                groupName: freshData.name || "your group"
+                            });
+                        }
+
+                        next = addPeriod(next, template.frequency);
+                        addedCount++;
+                    }
+                    template.nextDate = next;
+                });
+
+                t.update(ref, { expenses, recurringExpenses: freshTemplates });
+            });
+        } catch (err) {
+            console.error(`Error processing recurring expenses for group ${groupDoc.id}:`, err);
+            continue;
+        }
+
+        // Notify each creator directly that their recurring expense was just added.
+        for (const [uid, items] of Object.entries(notifyMap)) {
+            try {
+                const userDoc = await db.collection("users").doc(uid).get();
+                const token = userDoc.exists && userDoc.data().fcmToken;
+                if (!token) continue;
+
+                for (const item of items) {
+                    const amount = Number(item.amount).toFixed(2);
+                    try {
+                        await admin.messaging().send({
+                            notification: {
+                                title: "Recurring expense added 🔁",
+                                body: `"${item.description}" (${amount} ${item.currency}) was just added to ${item.groupName}.`
+                            },
+                            token
+                        });
+                    } catch (err) {
+                        console.error(`Error sending recurring notification to ${uid}:`, err);
+                    }
+                }
+            } catch (err) {
+                console.error(`Error fetching user ${uid} for recurring notification:`, err);
+            }
+        }
+    }
+});
+
+// 3. Monthly Reminder for unsettled balances (Runs on the 1st of every month)
 exports.monthlyreminder = onSchedule("0 0 1 * *", async (event) => {
     // Get all groups
     const groupsSnapshot = await db.collection("groups").get();
