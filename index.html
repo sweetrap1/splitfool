@@ -183,6 +183,12 @@
                     <button class="btn primary" id="add-expense-btn"><i class="fa-solid fa-plus"></i> Add
                         Expense</button>
                 </div>
+                <div id="recurring-section" class="hidden" style="margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0 0 0.5rem; font-size: 0.95rem; color: var(--text-muted);">
+                        <i class="fa-solid fa-rotate"></i> Recurring Expenses
+                    </h3>
+                    <div id="recurring-list"></div>
+                </div>
                 <div class="expense-list" id="expense-list">
                     <!-- Dynamic rendering -->
                 </div>
@@ -342,6 +348,24 @@
                         </select>
                     </div>
                 </div>
+                <div class="form-group" id="recurring-toggle-group"
+                    style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1rem;">
+                    <label style="margin: 0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="expense-recurring" style="width: auto;">
+                        <span><i class="fa-solid fa-rotate"></i> Make this a recurring expense</span>
+                    </label>
+                    <div id="recurring-options" class="hidden" style="margin-top: 0.75rem;">
+                        <label for="expense-recurring-frequency">Repeats</label>
+                        <select id="expense-recurring-frequency">
+                            <option value="monthly">Monthly</option>
+                            <option value="weekly">Weekly</option>
+                        </select>
+                        <p class="subtitle" style="margin: 0.5rem 0 0; font-size: 0.8rem;">
+                            We'll automatically add this expense on schedule and notify you when it's added.
+                        </p>
+                    </div>
+                </div>
+
                 <div class="form-group"
                     style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 1rem;">
                     <div
@@ -374,11 +398,11 @@
                 <div class="split-section">
                     <h4>Split Options</h4>
                     <div class="split-tabs">
-                        <button class="split-tab active" data-split="equal">Equal</button>
-                        <button class="split-tab" data-split="exact">Exact</button>
-                        <button class="split-tab" data-split="percent">Percent</button>
-                        <button class="split-tab" data-split="shares">Shares</button>
-                        <button class="split-tab" data-split="paid_for">Paid For</button>
+                        <button class="split-tab split-mode-tab active" data-split="equal">Equal</button>
+                        <button class="split-tab split-mode-tab" data-split="exact">Exact</button>
+                        <button class="split-tab split-mode-tab" data-split="percent">Percent</button>
+                        <button class="split-tab split-mode-tab" data-split="shares">Shares</button>
+                        <button class="split-tab split-mode-tab" data-split="paid_for">Paid For</button>
                     </div>
 
                     <div class="participants-list" id="split-participants">

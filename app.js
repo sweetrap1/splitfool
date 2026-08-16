@@ -1013,6 +1013,14 @@ function initModals() {
         });
     });
 
+    // Recurring expense toggle
+    const recurringCheckbox = document.getElementById('expense-recurring');
+    if (recurringCheckbox) {
+        recurringCheckbox.addEventListener('change', () => {
+            document.getElementById('recurring-options').classList.toggle('hidden', !recurringCheckbox.checked);
+        });
+    }
+
     // Save Person handler
     document.getElementById('save-person-btn').addEventListener('click', () => {
         const nameInput = document.getElementById('person-name');
@@ -1364,6 +1372,16 @@ function resetExpenseForm() {
         document.getElementById('expense-amount').value = '';
         document.getElementById('expense-currency').value = 'USD';
 
+        // Recurring is only offered when creating a brand new expense
+        const recurringGroup = document.getElementById('recurring-toggle-group');
+        if (recurringGroup) recurringGroup.classList.remove('hidden');
+        const recurringCheckbox = document.getElementById('expense-recurring');
+        if (recurringCheckbox) recurringCheckbox.checked = false;
+        const recurringOptions = document.getElementById('recurring-options');
+        if (recurringOptions) recurringOptions.classList.add('hidden');
+        const recurringFrequency = document.getElementById('expense-recurring-frequency');
+        if (recurringFrequency) recurringFrequency.value = 'monthly';
+
         togglePayerMode('single');
 
         // Populate payers with XSS protection
@@ -1376,8 +1394,8 @@ function resetExpenseForm() {
         renderSplitParticipants();
 
         // Reset tabs
-        document.querySelectorAll('.split-tab').forEach(t => t.classList.remove('active'));
-        document.querySelector('.split-tab[data-split="equal"]').classList.add('active');
+        document.querySelectorAll('.split-mode-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.split-mode-tab[data-split="equal"]').classList.add('active');
         currentSplitMode = 'equal';
         updateSplitSummary();
     } catch (e) {
@@ -1461,9 +1479,9 @@ window.toggleParticipant = function (id) {
 };
 
 // Add event listeners for split tabs
-document.querySelectorAll('.split-tab').forEach(btn => {
+document.querySelectorAll('.split-mode-tab').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.split-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.split-mode-tab').forEach(t => t.classList.remove('active'));
         e.target.classList.add('active');
         currentSplitMode = e.target.getAttribute('data-split');
 
@@ -1655,6 +1673,10 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
 
     const activeGroup = getActiveGroup();
 
+    const recurringCheckbox = document.getElementById('expense-recurring');
+    const makeRecurring = !existingId && recurringCheckbox && recurringCheckbox.checked;
+    const frequency = document.getElementById('expense-recurring-frequency').value;
+
     db.runTransaction(async (t) => {
         const ref = db.collection('groups').doc(activeGroup.id);
         const doc = await t.get(ref);
@@ -1671,7 +1693,28 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
             groupData.expenses.push(expense);
         }
 
-        t.update(ref, { expenses: groupData.expenses });
+        const updates = { expenses: groupData.expenses };
+
+        if (makeRecurring) {
+            const recurringExpenses = groupData.recurringExpenses || [];
+            recurringExpenses.push({
+                id: 'rec_' + Date.now(),
+                description: desc,
+                amount,
+                currency,
+                payerId: payers[0].personId,
+                payers,
+                splitType: currentSplitMode,
+                participants,
+                frequency,
+                nextDate: nextRecurringDate(frequency),
+                createdBy: currentUser ? currentUser.uid : null,
+                active: true
+            });
+            updates.recurringExpenses = recurringExpenses;
+        }
+
+        t.update(ref, updates);
     }).then(() => {
         expenseIdInput.value = ''; // Reset
         document.getElementById('expense-modal').classList.remove('active');
@@ -1681,6 +1724,18 @@ document.getElementById('save-expense-btn').addEventListener('click', () => {
     });
 });
 
+// Computes the next occurrence date (YYYY-MM-DD, UTC) for a recurring expense,
+// one period after today since today's expense was just added.
+function nextRecurringDate(frequency) {
+    const d = new Date();
+    if (frequency === 'weekly') {
+        d.setUTCDate(d.getUTCDate() + 7);
+    } else {
+        d.setUTCMonth(d.getUTCMonth() + 1);
+    }
+    return d.toISOString().slice(0, 10);
+}
+
 window.editExpense = function (id) {
     const activeGroup = getActiveGroup();
     const expense = activeGroup.expenses.find(e => e.id === id);
@@ -1689,6 +1744,14 @@ window.editExpense = function (id) {
     // Open modal
     document.getElementById('expense-modal').classList.add('active');
     document.getElementById('expense-modal-title').textContent = 'Edit Expense';
+
+    // Recurring setup only applies to brand new expenses, not edits
+    const recurringGroup = document.getElementById('recurring-toggle-group');
+    if (recurringGroup) recurringGroup.classList.add('hidden');
+    const recurringCheckbox = document.getElementById('expense-recurring');
+    if (recurringCheckbox) recurringCheckbox.checked = false;
+    const recurringOptions = document.getElementById('recurring-options');
+    if (recurringOptions) recurringOptions.classList.add('hidden');
 
     // Populate payers list before setting value
     updatePayerDropdown();
@@ -1712,7 +1775,7 @@ window.editExpense = function (id) {
 
     // Set split mode
     currentSplitMode = expense.splitType;
-    document.querySelectorAll('.split-tab').forEach(t => {
+    document.querySelectorAll('.split-mode-tab').forEach(t => {
         t.classList.toggle('active', t.getAttribute('data-split') === currentSplitMode);
     });
 
@@ -1760,10 +1823,97 @@ window.deleteExpense = function (id) {
     }
 };
 
+function renderRecurringExpenses() {
+    const activeGroup = getActiveGroup();
+    const section = document.getElementById('recurring-section');
+    const list = document.getElementById('recurring-list');
+    if (!section || !list) return;
+
+    const recurring = activeGroup.recurringExpenses || [];
+    if (recurring.length === 0) {
+        section.classList.add('hidden');
+        list.innerHTML = '';
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    list.innerHTML = recurring.map(r => {
+        const safeId = escapeHTML(r.id);
+        const safeDesc = escapeHTML(r.description);
+        const safeCurrency = escapeHTML(r.currency);
+        const safeFrequency = escapeHTML(r.frequency);
+        const nextDate = r.nextDate ? new Date(r.nextDate + 'T00:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '';
+
+        return `
+            <div class="card expense-card" id="rec_${safeId}" style="${r.active ? '' : 'opacity: 0.55;'}">
+                <div class="expense-header">
+                    <div style="flex:1">
+                        <h3>${safeDesc}</h3>
+                        <div style="color: var(--text-muted); font-size: 0.85em; margin-top: 4px; text-transform: capitalize;">
+                            ${safeFrequency}${r.active ? ` &middot; Next: ${nextDate}` : ' &middot; Paused'}
+                        </div>
+                    </div>
+                    <div class="amount">${safeCurrency} ${Number(r.amount).toFixed(2)}</div>
+                    <div class="expense-actions">
+                        <button class="expense-action-btn edit" onclick="toggleRecurringActive('${safeId}')" title="${r.active ? 'Pause' : 'Resume'}">
+                            <i class="fa-solid ${r.active ? 'fa-pause' : 'fa-play'}"></i>
+                        </button>
+                        <button class="expense-action-btn delete" onclick="deleteRecurring('${safeId}')" title="Delete Recurring Expense">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.deleteRecurring = function (id) {
+    if (!confirm('Stop this recurring expense? Future occurrences will no longer be added automatically.')) return;
+
+    const activeGroup = getActiveGroup();
+
+    db.runTransaction(async (t) => {
+        const ref = db.collection('groups').doc(activeGroup.id);
+        const doc = await t.get(ref);
+        if (!doc.exists) return;
+
+        const groupData = doc.data();
+        const recurringExpenses = (groupData.recurringExpenses || []).filter(r => r.id !== id);
+        t.update(ref, { recurringExpenses });
+    }).catch(e => console.error("Error deleting recurring expense", e));
+};
+
+window.toggleRecurringActive = function (id) {
+    const activeGroup = getActiveGroup();
+
+    db.runTransaction(async (t) => {
+        const ref = db.collection('groups').doc(activeGroup.id);
+        const doc = await t.get(ref);
+        if (!doc.exists) return;
+
+        const groupData = doc.data();
+        const recurringExpenses = groupData.recurringExpenses || [];
+        const index = recurringExpenses.findIndex(r => r.id === id);
+        if (index === -1) return;
+
+        recurringExpenses[index].active = !recurringExpenses[index].active;
+        // If resuming, push the next date forward so a paused expense doesn't
+        // immediately fire a backlog of missed occurrences.
+        if (recurringExpenses[index].active) {
+            recurringExpenses[index].nextDate = nextRecurringDate(recurringExpenses[index].frequency);
+        }
+        t.update(ref, { recurringExpenses });
+    }).catch(e => console.error("Error toggling recurring expense", e));
+};
+
 function renderExpenses() {
     const activeGroup = getActiveGroup();
     const list = document.getElementById('expense-list');
     list.innerHTML = ''; // Clear previous renders!
+
+    renderRecurringExpenses();
 
     const fabButton = document.querySelector('.fab');
     if (activeGroup.isLocked) {
