@@ -14,7 +14,7 @@ export function nextRecurringDate(frequency) {
     return d.toISOString().slice(0, 10);
 }
 
-export async function addRecurringExpense(template) {
+export async function addRecurringExpense(template, id) {
     const activeGroup = getActiveGroup();
     if (!activeGroup.id) return;
 
@@ -26,7 +26,7 @@ export async function addRecurringExpense(template) {
         const groupData = doc.data();
         const recurringExpenses = groupData.recurringExpenses || [];
         recurringExpenses.push({
-            id: 'rec_' + Date.now(),
+            id: id || ('rec_' + Date.now()),
             createdBy: state.currentUser ? state.currentUser.uid : null,
             active: true,
             ...template

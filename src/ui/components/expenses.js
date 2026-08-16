@@ -128,6 +128,13 @@ export function initExpensesUI(renderAll) {
                 });
             }
 
+            const recurringCheckbox = document.getElementById('expense-recurring');
+            const makeRecurring = !existingId && recurringCheckbox && recurringCheckbox.checked;
+            const frequency = document.getElementById('expense-recurring-frequency')?.value || 'monthly';
+            // Shared ID linking this expense to its recurring template, so the
+            // UI can badge them as related instead of looking like duplicates.
+            const recurringId = makeRecurring ? ('rec_' + Date.now()) : null;
+
             const expenseData = {
                 id: existingId || 'e_' + crypto.randomUUID(),
                 description: desc,
@@ -136,12 +143,9 @@ export function initExpensesUI(renderAll) {
                 payerId: payers[0].personId, // fallback for legacy clients
                 payers: payers,
                 splitType: currentSplitMode,
-                participants
+                participants,
+                ...(recurringId ? { recurringId } : {})
             };
-
-            const recurringCheckbox = document.getElementById('expense-recurring');
-            const makeRecurring = !existingId && recurringCheckbox && recurringCheckbox.checked;
-            const frequency = document.getElementById('expense-recurring-frequency')?.value || 'monthly';
 
             const saveBtn = document.getElementById('save-expense-btn');
             saveBtn.disabled = true;
@@ -162,7 +166,7 @@ export function initExpensesUI(renderAll) {
                         participants,
                         frequency,
                         nextDate: nextRecurringDate(frequency)
-                    });
+                    }, recurringId);
                 }
                 expenseModal.classList.remove('active');
                 updateModalBodyClass();
@@ -213,13 +217,16 @@ export function resetExpenseForm() {
 
     togglePayerMode('single');
     updatePayerDropdown();
-    document.getElementById('split-participants').innerHTML = '';
-    renderSplitParticipants();
 
-    // Reset tabs
+    // Reset split mode to equal BEFORE rendering participants, so the initial
+    // render doesn't use a stale currentSplitMode (e.g. 'paid_for') left over
+    // from the last expense added/edited.
     document.querySelectorAll('.split-mode-tab').forEach(t => t.classList.remove('active'));
     document.querySelector('.split-mode-tab[data-split="equal"]').classList.add('active');
     currentSplitMode = 'equal';
+
+    document.getElementById('split-participants').innerHTML = '';
+    renderSplitParticipants();
     updateSplitSummary();
 
     // Recurring is only offered when creating a brand new expense
@@ -504,10 +511,10 @@ function renderRecurringExpenses() {
         const nextDate = r.nextDate ? new Date(r.nextDate + 'T00:00:00Z').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '';
 
         return `
-            <div class="card expense-card" id="rec_${safeId}" style="${r.active ? '' : 'opacity: 0.55;'}">
+            <div class="card expense-card recurring-template-card" id="rec_${safeId}" style="border-left: 3px solid var(--primary); background: rgba(var(--primary-rgb), 0.05); ${r.active ? '' : 'opacity: 0.55;'}">
                 <div class="expense-header">
                     <div style="flex:1">
-                        <h3>${safeDesc}</h3>
+                        <h3><i class="fa-solid fa-rotate" style="font-size: 0.8em; color: var(--primary); margin-right: 6px;"></i>${safeDesc}</h3>
                         <div style="color: var(--text-muted); font-size: 0.85em; margin-top: 4px; text-transform: capitalize;">
                             ${safeFrequency}${r.active ? ` &middot; Next: ${nextDate}` : ' &middot; Paused'}
                         </div>
@@ -665,6 +672,9 @@ export function renderExpenses() {
 
         const archivedClass = isArchived ? ' expense-archived' : '';
         const archivedBadge = isArchived ? `<span style="font-size: 0.7rem; color: var(--text-muted); background: rgba(255,255,255,0.06); border-radius: 8px; padding: 2px 8px; margin-left: 6px; font-weight: 600; letter-spacing: 0.5px;"><i class="fa-solid fa-box-archive" style="margin-right: 3px;"></i>Archived</span>` : '';
+        // Marks this expense as linked to a recurring template, so it doesn't
+        // read as an unrelated duplicate of the card in the Recurring Expenses section.
+        const recurringBadge = e.recurringId ? `<span style="font-size: 0.7rem; color: var(--primary); background: rgba(var(--primary-rgb), 0.12); border-radius: 8px; padding: 2px 8px; margin-left: 6px; font-weight: 600; letter-spacing: 0.5px;"><i class="fa-solid fa-rotate" style="margin-right: 3px;"></i>Recurring</span>` : '';
 
         let dateHtml = '';
         if (e.createdAt) {
@@ -678,7 +688,7 @@ export function renderExpenses() {
             <div class="card expense-card${archivedClass}" id="exp_${safeId}">
                 <div class="expense-header">
                     <div style="flex:1; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
-                        <h3>${safeDesc}</h3>${archivedBadge}
+                        <h3>${safeDesc}</h3>${archivedBadge}${recurringBadge}
                     </div>
                     ${dateHtml}
                     <div class="amount" style="margin-left: 1rem;">${symbol} ${e.amount.toFixed(2)}</div>
