@@ -76,3 +76,13 @@ local.properties
 *.apk
 *.aab
 *.mdmp
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
